@@ -143,7 +143,9 @@
       if (editRowKasir) batalEditKasir();
       if (showRiwayat) muatRiwayatKasir();
       
-      setTimeout(() => { window.print(); }, 500);
+      // PERUBAHAN: Memanggil Jurus iFrame, bukan lagi window.print() biasa
+      cetakKwitansiIframe();
+
     } catch (err) {
       alert("❌ Gagal menyimpan ke Database: " + err.message);
     } finally {
@@ -204,6 +206,70 @@
     identitasValues = {};
     keranjang = [];
   }
+
+  // ==========================================
+  // JURUS PAMUNGKAS: CETAK IFRAME (ANTI-SCREENSHOT)
+  // ==========================================
+  function cetakKwitansiIframe() {
+    // 1. Ambil HANYA area HTML Kwitansi yang sudah kita tandai
+    const printContent = document.getElementById('area-cetak-kwitansi').innerHTML;
+
+    // 2. Buat Jendela Isolasi (iFrame) di latar belakang
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    // 3. Suntikkan HTML & CSS Murni khusus kertas cetak Kwitansi
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Kwitansi_EBilling_${identitasValues[0] || 'Pasien'}</title>
+        <style>
+          /* Seting Kertas A4 Portrait */
+          @page { size: A4 portrait; margin: 15mm; }
+          body { font-family: 'Arial', sans-serif; background: white; color: black; margin: 0; padding: 0; }
+          
+          /* Anti-Tabel Terpotong & Warna Tajam */
+          table { page-break-inside: auto; border-collapse: collapse; width: 100%; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          td, th { page-break-inside: avoid; color: black !important; }
+
+          /* Paksa warna background tabel tercetak (penting untuk header abu-abu) */
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+          /* Blokir Ekstensi Browser yang suka mengganggu form */
+          magical-app, grammarly-extension, div[id^="magical"] { display: none !important; }
+        </style>
+      </head>
+      <body onload="setTimeout(function(){ window.print(); window.parent.postMessage('printSelesaiEBilling', '*'); }, 800)">
+        ${printContent}
+      </body>
+      </html>
+    `);
+    doc.close();
+
+    // 4. Bersihkan memori setelah kertas selesai dicetak
+    window.addEventListener('message', function cleanup(e) {
+      if (e.data === 'printSelesaiEBilling') {
+        setTimeout(() => { if (document.body.contains(iframe)) document.body.removeChild(iframe); }, 500);
+        window.removeEventListener('message', cleanup);
+      }
+    });
+
+    // Fallback darurat (Mencegah iframe menyangkut di RAM)
+    setTimeout(() => {
+      if (document.body.contains(iframe)) document.body.removeChild(iframe);
+    }, 8000);
+  }
+
 </script>
 
 <div class="animate-fade-in bg-slate-50 min-h-screen pb-20">
@@ -419,7 +485,7 @@
         </button>
       </div>
 
-      <div class="mt-12 print-content">
+      <div id="area-cetak-kwitansi" class="mt-12 print-content">
         <div style="page-break-after: always; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px dashed #999; display: block;">
           
           <table style="width: 100%; margin-bottom: 5px; border-bottom: 3px solid black; padding-bottom: 5px; border-collapse: collapse;">
