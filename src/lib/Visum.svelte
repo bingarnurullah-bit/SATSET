@@ -219,7 +219,7 @@
 </script>
 
 {#if showApprovalModal}
-  <div class="fixed inset-0 bg-slate-900/70 z-[100] flex justify-center items-center backdrop-blur-sm">
+  <div class="fixed inset-0 bg-slate-900/70 z-[100] flex justify-center items-center backdrop-blur-sm p-4">
     <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full border-t-8 border-emerald-500 animate-fade-in">
       <div class="text-center mb-6">
         <span class="material-icons text-5xl text-emerald-500 mb-2">verified_user</span>
@@ -240,7 +240,7 @@
 {/if}
 
 {#if showUnlockModal}
-  <div class="fixed inset-0 bg-slate-900/70 z-[100] flex justify-center items-center backdrop-blur-sm">
+  <div class="fixed inset-0 bg-slate-900/70 z-[100] flex justify-center items-center backdrop-blur-sm p-4">
     <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-sm w-full border-t-8 border-red-500 animate-fade-in">
       <div class="text-center mb-6">
         <span class="material-icons text-5xl text-red-500 mb-2">lock</span>
@@ -260,86 +260,86 @@
 {/if}
 
 <div class="bg-slate-50 min-h-screen pt-4 pb-20 relative">
-  <div class="max-w-6xl mx-auto px-4 mb-6 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+  <div class="max-w-6xl mx-auto px-4 mb-6 flex flex-wrap gap-4 justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
     <button on:click={() => switchView('dashboard')} class="text-slate-500 font-bold text-sm flex items-center hover:text-black transition">
       <span class="material-icons text-base mr-1">arrow_back</span> Dashboard
     </button>
-    <div class="flex bg-slate-100 p-1 rounded-lg">
-      <button on:click={() => pindahHalaman('form')} class="px-6 py-2 rounded-md font-bold text-sm transition-all {activePage === 'form' ? 'bg-white shadow text-blue-700' : 'text-slate-500 hover:text-black'}">📝 Form Input</button>
-      <button on:click={() => pindahHalaman('riwayat')} class="px-6 py-2 rounded-md font-bold text-sm transition-all {activePage === 'riwayat' ? 'bg-white shadow text-[#D4AF37]' : 'text-slate-500 hover:text-black'}">📂 Riwayat Dokumen</button>
+    <div class="flex bg-slate-100 p-1 rounded-lg w-full md:w-auto">
+      <button on:click={() => pindahHalaman('form')} class="w-1/2 md:w-auto px-6 py-2 rounded-md font-bold text-sm transition-all {activePage === 'form' ? 'bg-white shadow text-blue-700' : 'text-slate-500 hover:text-black'}">📝 Form Input</button>
+      <button on:click={() => pindahHalaman('riwayat')} class="w-1/2 md:w-auto px-6 py-2 rounded-md font-bold text-sm transition-all {activePage === 'riwayat' ? 'bg-white shadow text-[#D4AF37]' : 'text-slate-500 hover:text-black'}">📂 Riwayat Dokumen</button>
     </div>
   </div>
 
   {#if activePage === 'form'}
-  <div class="max-w-5xl mx-auto bg-white p-8 md:p-12 shadow-xl rounded-sm border-t-8 border-blue-600 animate-fade-in">
+  <div class="max-w-5xl mx-auto bg-white p-6 md:p-12 shadow-xl rounded-sm border-t-8 border-blue-600 animate-fade-in">
     
     <div class="text-center border-b-4 border-black pb-4 mb-6 relative">
-      <img src="/logo-kab.png" alt="Logo Kab Malang" class="absolute left-0 top-0 w-20">
-      <h2 class="text-2xl font-black m-0 uppercase text-blackiujugfn,nhytv878iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiimbvjjnklnbnjmul.,lo,lool0.mkmkmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm,m,l,mnmjn,kibhynh][ponxde['mgterwtrr4f5rrecdecddcewwearwt\8;po9yhtoil,oiuhulp.nh7uki,ki8y7lomjmun,kmmmmmmmmmmmmmmmmmmmmmmmm
-      ikiop.,-600 tracking-wider">PEMERINTAH KABUPATEN MALANG</h2>
-      <h2 class="text-2xl font-black m-0 uppercase tracking-wider">DINAS KESEHATAN</h2>
-      <h1 class="text-3xl font-black m-0 uppercase tracking-widest mt-1">UPT Puskesmas Poncokusumo</h1>
-      <p class="text-sm m-0 italic mt-2">Jl. Kusnan Marzuki No. 101, Wonomulyo. Telp: (0341) 787792 | Email: pkmponcokusumo@gmail.com</p>
+      <img src="/logo-kab.png" alt="Logo Kab Malang" class="absolute left-0 top-0 w-16 md:w-20">
+      <h2 class="text-xl md:text-2xl font-black m-0 uppercase text-slate-800 tracking-wider">PEMERINTAH KABUPATEN MALANG</h2>
+      <h2 class="text-xl md:text-2xl font-black m-0 uppercase tracking-wider">DINAS KESEHATAN</h2>
+      <h1 class="text-2xl md:text-3xl font-black m-0 uppercase tracking-widest mt-1">UPT Puskesmas Poncokusumo</h1>
+      <p class="text-xs md:text-sm m-0 italic mt-2 text-slate-600">Jl. Kusnan Marzuki No. 101, Wonomulyo. Telp: (0341) 787792 | Email: pkmponcokusumo@gmail.com</p>
     </div>
 
     <div class="flex justify-between items-start mb-6">
       <div>
         <h3 class="font-black text-xl underline tracking-widest">PRO JUSTISIA</h3>
-        <table class="text-sm mt-2 font-bold">
-          <tbody><tr><td>Nomor</td><td>: <input type="text" bind:value={form.no_surat} class="border-b border-dashed border-slate-400 outline-none"></td></tr>
+        <table class="text-sm mt-2 font-bold w-full">
+          <tbody><tr><td class="w-24">Nomor</td><td>: <input type="text" bind:value={form.no_surat} class="border-b border-dashed border-slate-400 outline-none w-full max-w-[200px]"></td></tr>
           <tr><td>Klasifikasi</td><td>: Rahasia</td></tr>
           <tr><td>Perihal</td><td>: Visum Et Repertum Hidup</td></tr>
         </tbody></table>
       </div>
       <div class="text-right">
-        <h2 class="text-2xl font-black border-2 border-black p-2 inline-block shadow-sm">VISUM ET REPERTUM</h2>
+        <h2 class="text-xl md:text-2xl font-black border-2 border-black p-2 inline-block shadow-sm">VISUM ET REPERTUM</h2>
       </div>
     </div>
 
-    <div class="space-y-4 text-sm">
+    <div class="space-y-4 text-sm md:text-base">
       <p class="leading-relaxed text-justify">
         Atas permintaan tertulis dari Kepolisian Negara Republik Indonesia Resor Malang Sektor Poncokusumo, melalui suratnya tanggal <input type="date" bind:value={form.tgl_permintaan} class="border-b border-dashed border-blue-400 text-blue-700 font-bold outline-none">
-        Nomor Polisi: <input type="text" bind:value={form.no_polisi} class="border-b border-dashed border-blue-400 text-blue-700 font-bold outline-none w-48"> yang ditanda-tangani oleh 
-        <input type="text" bind:value={form.penandatangan_polisi} placeholder="Nama Penyidik" class="border-b border-dashed border-blue-400 text-blue-700 font-bold outline-none">, 
-        Pangkat <input type="text" bind:value={form.pangkat_polisi} class="border-b border-dashed border-blue-400 text-blue-700 font-bold outline-none w-32">
+        Nomor Polisi: <input type="text" bind:value={form.no_polisi} class="border-b border-dashed border-blue-400 text-blue-700 font-bold outline-none w-full md:w-48"> yang ditanda-tangani oleh 
+        <input type="text" bind:value={form.penandatangan_polisi} placeholder="Nama Penyidik" class="border-b border-dashed border-blue-400 text-blue-700 font-bold outline-none w-full md:w-auto">, 
+        Pangkat <input type="text" bind:value={form.pangkat_polisi} class="border-b border-dashed border-blue-400 text-blue-700 font-bold outline-none w-full md:w-32">
         yang diterima pada tanggal <input type="date" bind:value={form.tgl_terima} class="border-b border-dashed border-blue-400 text-blue-700 font-bold outline-none"> 
         pukul <input type="time" bind:value={form.jam_terima} class="border-b border-dashed border-blue-400 text-blue-700 font-bold outline-none"> WIB, 
         dan dilakukan pemeriksaan medis oleh Dokter Puskesmas Poncokusumo, tentang permintaan Visum Et Repertum Hidup dengan identitas korban sebagai berikut:
       </p>
-DRTYGHY7JHJKKK988O898
+
       <table class="w-full ml-8 font-semibold">
-        <tbody><tr><td w="20%">Nama</td><td>: <input type="text" bind:value={form.nama_korban} class="border-b w-3/4 uppercase"></td></tr>
-        <tr><td>Jenis Kelamin</td><td>: <select bind:value={form.jk_korban} class="border-b outline-none"><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></td></tr>
-        <tr><td>Umur</td><td>: <input type="text" bind:value={form.umur_korban} class="border-b w-1/2 outline-none"></td></tr>
-        <tr><td>Agama</td><td>: <input type="text" bind:value={form.agama_korban} class="border-b w-1/2 outline-none"></td></tr>
-        <tr><td>Pekerjaan</td><td>: <input type="text" bind:value={form.pekerjaan_korban} class="border-b w-1/2 outline-none"></td></tr>
-        <tr><td>Alamat</td><td>: <input type="text" bind:value={form.alamat_korban} class="border-b w-3/4 outline-none"></td></tr>
+        <tbody><tr><td class="w-[30%] md:w-[20%]">Nama</td><td>: <input type="text" bind:value={form.nama_korban} class="border-b w-[90%] md:w-3/4 uppercase"></td></tr>
+        <tr><td>Jenis Kelamin</td><td>: <select bind:value={form.jk_korban} class="border-b outline-none w-[90%] md:w-auto"><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></td></tr>
+        <tr><td>Umur</td><td>: <input type="text" bind:value={form.umur_korban} class="border-b w-[90%] md:w-1/2 outline-none"></td></tr>
+        <tr><td>Agama</td><td>: <input type="text" bind:value={form.agama_korban} class="border-b w-[90%] md:w-1/2 outline-none"></td></tr>
+        <tr><td>Pekerjaan</td><td>: <input type="text" bind:value={form.pekerjaan_korban} class="border-b w-[90%] md:w-1/2 outline-none"></td></tr>
+        <tr><td>Alamat</td><td>: <input type="text" bind:value={form.alamat_korban} class="border-b w-[90%] md:w-3/4 outline-none"></td></tr>
       </tbody></table>
 
-      <h3 class="font-bold mt-6 mb-2 bg-slate-200 p-1">TANDA-TANDA VITAL :</h3>
+      <h3 class="font-bold mt-6 mb-2 bg-slate-200 p-2 rounded">TANDA-TANDA VITAL :</h3>
       <div class="grid grid-cols-2 gap-4 ml-4">
-        <div>Keadaan Umum: <input type="text" bind:value={form.ku} class="border-b border-dashed w-1/2 outline-none text-blue-700 font-bold"></div>
-        <div>Suhu: <input type="text" bind:value={form.suhu} class="border-b border-dashed w-1/2 outline-none text-blue-700 font-bold"> °C</div>
-        <div>Tekanan Darah: <input type="text" bind:value={form.td} class="border-b border-dashed w-1/2 outline-none text-blue-700 font-bold"> mmHg</div>
-        <div>Nadi: <input type="text" bind:value={form.nadi} class="border-b border-dashed w-1/2 outline-none text-blue-700 font-bold"> x/mnt</div>
-        <div>Tinggi Badan: <input type="text" bind:value={form.tb} class="border-b border-dashed w-1/2 outline-none text-blue-700 font-bold"> cm</div>
-        <div>Pernafasan: <input type="text" bind:value={form.rr} class="border-b border-dashed w-1/2 outline-none text-blue-700 font-bold"> x/mnt</div>
-        <div>Berat Badan: <input type="text" bind:value={form.bb} class="border-b border-dashed w-1/2 outline-none text-blue-700 font-bold"> kg</div>
+        <div>Keadaan Umum: <input type="text" bind:value={form.ku} class="border-b border-dashed w-full md:w-1/2 outline-none text-blue-700 font-bold"></div>
+        <div>Suhu: <input type="text" bind:value={form.suhu} class="border-b border-dashed w-[80%] md:w-1/2 outline-none text-blue-700 font-bold"> °C</div>
+        <div>Tekanan Darah: <input type="text" bind:value={form.td} class="border-b border-dashed w-[80%] md:w-1/2 outline-none text-blue-700 font-bold"> mmHg</div>
+        <div>Nadi: <input type="text" bind:value={form.nadi} class="border-b border-dashed w-[80%] md:w-1/2 outline-none text-blue-700 font-bold"> x/mnt</div>
+        <div>Tinggi Badan: <input type="text" bind:value={form.tb} class="border-b border-dashed w-[80%] md:w-1/2 outline-none text-blue-700 font-bold"> cm</div>
+        <div>Pernafasan: <input type="text" bind:value={form.rr} class="border-b border-dashed w-[80%] md:w-1/2 outline-none text-blue-700 font-bold"> x/mnt</div>
+        <div>Berat Badan: <input type="text" bind:value={form.bb} class="border-b border-dashed w-[80%] md:w-1/2 outline-none text-blue-700 font-bold"> kg</div>
       </div>
 
-      <h3 class="font-bold mt-6 mb-2 bg-slate-200 p-1">HASIL PEMERIKSAAN LUAR :</h3>
-      <textarea bind:value={form.hasil_luar} class="w-full border p-2 min-h-[80px] rounded mb-4 text-blue-800" placeholder="Ketik narasi umum pemeriksaan luar di sini..."></textarea>
+      <h3 class="font-bold mt-6 mb-2 bg-slate-200 p-2 rounded">HASIL PEMERIKSAAN LUAR :</h3>
+      <textarea bind:value={form.hasil_luar} class="w-full border p-3 min-h-[100px] rounded mb-4 text-blue-800" placeholder="Ketik narasi umum pemeriksaan luar di sini..."></textarea>
       
-      <div class="grid grid-cols-2 gap-2 ml-4">
+      <div class="grid grid-cols-2 gap-x-2 gap-y-4 ml-0 md:ml-4">
         {#each ['Kepala', 'Dahi', 'Pipi', 'Mata', 'Hidung', 'Bibir', 'Gigi', 'Mulut', 'Telinga', 'Rahang', 'Dagu', 'Leher', 'Dada', 'Perut', 'Tangan', 'Punggung', 'Pinggang', 'Pinggul', 'Kemaluan', 'Kaki'] as organ}
           <div class="flex items-center">
-            <span class="w-24 font-semibold">{organ}</span>: <input type="text" bind:value={form[organ.toLowerCase()]} class="border-b border-dashed w-full ml-2 outline-none text-blue-700 font-bold" placeholder="...">
+            <span class="w-24 font-semibold">{organ}</span> <span class="hidden md:inline">:</span> 
+            <input type="text" bind:value={form[organ.toLowerCase()]} class="border-b border-dashed w-full md:ml-2 outline-none text-blue-700 font-bold" placeholder="...">
           </div>
         {/each}
       </div>
 
-      <h3 class="font-bold mt-6 mb-2 bg-slate-200 p-1">KESIMPULAN :</h3>
-      <p class="italic text-xs text-slate-500">Dari pemeriksaan luar tersebut ditemukan:</p>
+      <h3 class="font-bold mt-8 mb-2 bg-slate-200 p-2 rounded">KESIMPULAN :</h3>
+      <p class="italic text-xs text-slate-500 mb-2">Dari pemeriksaan luar tersebut ditemukan:</p>
       <textarea bind:value={form.kesimpulan} class="w-full border p-3 min-h-[120px] rounded mb-4 text-blue-800 font-bold" placeholder="Tuliskan derajat luka dan benda penyebab (Tumpul/Tajam)..."></textarea>
 
       <p class="text-justify mt-4">Demikian Visum et Repertum hidup ini dibuat dengan mengingat sumpah jabatan dan dapat dipertanggungjawabkan kebenarannya.</p>
@@ -353,7 +353,7 @@ DRTYGHY7JHJKKK988O898
           <p>NIP. 197501242006042015</p>
         </div>
         <div class="text-center w-64">
-          <p>Poncokusumo, <input type="date" bind:value={form.tgl_buat} class="border-b border-dashed border-slate-400 outline-none text-center"></p>
+          <p>Poncokusumo, <input type="date" bind:value={form.tgl_buat} class="border-b border-dashed border-slate-400 outline-none text-center w-[130px]"></p>
           <p class="font-bold">Dokter Pemeriksa</p>
           <br><br><br>
           <p class="font-bold">dr. <input type="text" bind:value={form.nama_dokter} placeholder="Nama Dokter" class="border-b border-dashed border-slate-400 outline-none text-center font-bold w-3/4"></p>
@@ -375,11 +375,11 @@ DRTYGHY7JHJKKK988O898
 
 
   {#if activePage === 'riwayat'}
-  <div class="max-w-6xl mx-auto bg-white p-8 rounded-2xl shadow-xl border border-slate-200 animate-fade-in">
+  <div class="max-w-6xl mx-auto bg-white p-4 md:p-8 rounded-2xl shadow-xl border border-slate-200 animate-fade-in mx-2 md:mx-auto">
     <div class="flex justify-between items-end border-b-2 border-slate-200 pb-4 mb-6">
       <div>
-        <h2 class="font-black text-2xl text-slate-800">Bank Dokumen Visum</h2>
-        <p class="text-sm text-slate-500">Daftar Laporan Visum Et Repertum yang tersimpan di sistem.</p>
+        <h2 class="font-black text-xl md:text-2xl text-slate-800">Bank Dokumen Visum</h2>
+        <p class="text-xs md:text-sm text-slate-500">Daftar Laporan Visum Et Repertum yang tersimpan di sistem.</p>
       </div>
     </div>
 
@@ -390,53 +390,53 @@ DRTYGHY7JHJKKK988O898
         <table class="w-full text-sm text-left">
           <thead class="bg-slate-800 text-white">
             <tr>
-              <th class="p-4 rounded-tl-lg">No. Polisi / Tgl</th>
-              <th class="p-4">Identitas Korban</th>
-              <th class="p-4 text-center">Status Hukum</th>
-              <th class="p-4 text-right rounded-tr-lg">Aksi Dokumen</th>
+              <th class="p-3 md:p-4 rounded-tl-lg whitespace-nowrap">No. Polisi / Tgl</th>
+              <th class="p-3 md:p-4 whitespace-nowrap">Identitas Korban</th>
+              <th class="p-3 md:p-4 text-center whitespace-nowrap">Status Hukum</th>
+              <th class="p-3 md:p-4 text-right rounded-tr-lg whitespace-nowrap">Aksi Dokumen</th>
             </tr>
           </thead>
           <tbody>
             {#each riwayatData as v}
               <tr class="border-b hover:bg-slate-50 transition">
-                <td class="p-4"><span class="font-bold block">{v.no_polisi || '-'}</span><span class="text-xs text-slate-500">{v.tgl_buat || 'Belum di-set'}</span></td>
-                <td class="p-4"><span class="font-black text-slate-800 uppercase">{v.nama_korban}</span><span class="text-xs text-slate-500 block">Penyidik: {v.penandatangan_polisi}</span></td>
+                <td class="p-3 md:p-4"><span class="font-bold block text-xs md:text-sm">{v.no_polisi || '-'}</span><span class="text-[10px] md:text-xs text-slate-500">{v.tgl_buat || 'Belum di-set'}</span></td>
+                <td class="p-3 md:p-4"><span class="font-black text-slate-800 uppercase text-xs md:text-sm">{v.nama_korban}</span><span class="text-[10px] md:text-xs text-slate-500 block mt-1">Penyidik: {v.penandatangan_polisi}</span></td>
                 
-                <td class="p-4 text-center">
+                <td class="p-3 md:p-4 text-center">
                   {#if v.status_approval}
-                    <div class="bg-emerald-100 text-emerald-700 border border-emerald-300 px-3 py-1.5 rounded-lg font-black text-xs inline-flex items-center shadow-sm">
-                      <span class="material-icons text-sm mr-1">verified</span> DISETUJUI
+                    <div class="bg-emerald-100 text-emerald-700 border border-emerald-300 px-2 py-1 md:px-3 md:py-1.5 rounded-lg font-black text-[10px] md:text-xs inline-flex items-center shadow-sm">
+                      <span class="material-icons text-xs md:text-sm mr-1">verified</span> DISETUJUI
                     </div>
                   {:else}
-                    <div class="bg-orange-100 text-orange-700 border border-orange-300 px-3 py-1.5 rounded-lg font-bold text-xs inline-flex items-center shadow-sm">
-                      <span class="material-icons text-sm mr-1">pending_actions</span> DRAFT
+                    <div class="bg-orange-100 text-orange-700 border border-orange-300 px-2 py-1 md:px-3 md:py-1.5 rounded-lg font-bold text-[10px] md:text-xs inline-flex items-center shadow-sm">
+                      <span class="material-icons text-xs md:text-sm mr-1">pending_actions</span> DRAFT
                     </div>
                   {/if}
                 </td>
                 
-                <td class="p-4 text-right space-x-2">
+                <td class="p-3 md:p-4 text-right space-y-2 md:space-y-0 md:space-x-2">
                   {#if v.status_approval}
-                    <button on:click={() => editDataVisum(v)} class="bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 px-3 py-2 rounded-lg font-bold text-xs inline-flex items-center transition shadow-sm" title="Bypass khusus Kapus">
-                      <span class="material-icons text-sm mr-1">lock</span> Edit Terkunci
+                    <button on:click={() => editDataVisum(v)} class="bg-red-100 text-red-700 hover:bg-red-200 border border-red-300 px-2 md:px-3 py-1.5 md:py-2 rounded-lg font-bold text-[10px] md:text-xs inline-flex items-center transition shadow-sm w-full md:w-auto justify-center mb-1 md:mb-0" title="Bypass khusus Kapus">
+                      <span class="material-icons text-xs md:text-sm mr-1">lock</span> Edit Terkunci
                     </button>
                   {:else}
-                    <button on:click={() => editDataVisum(v)} class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-3 py-2 rounded-lg font-bold text-xs inline-flex items-center transition shadow-sm border border-slate-300">
-                      <span class="material-icons text-sm mr-1">edit</span> Edit
+                    <button on:click={() => editDataVisum(v)} class="bg-slate-100 text-slate-700 hover:bg-slate-200 px-2 md:px-3 py-1.5 md:py-2 rounded-lg font-bold text-[10px] md:text-xs inline-flex items-center transition shadow-sm border border-slate-300 w-full md:w-auto justify-center mb-1 md:mb-0">
+                      <span class="material-icons text-xs md:text-sm mr-1">edit</span> Edit
                     </button>
                   {/if}
 
                   {#if !v.status_approval}
-                    <button on:click={() => bukaModalApproval(v)} class="bg-[#D4AF37] hover:bg-yellow-600 text-white px-3 py-2 rounded-lg font-bold text-xs inline-flex items-center transition shadow-md">
-                      <span class="material-icons text-sm mr-1">gavel</span> Setujui (Kapus)
+                    <button on:click={() => bukaModalApproval(v)} class="bg-[#D4AF37] hover:bg-yellow-600 text-white px-2 md:px-3 py-1.5 md:py-2 rounded-lg font-bold text-[10px] md:text-xs inline-flex items-center transition shadow-md w-full md:w-auto justify-center">
+                      <span class="material-icons text-xs md:text-sm mr-1">gavel</span> Setujui
                     </button>
                   {:else}
-                    <button on:click={() => cetakVisum(v)} class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-black text-xs inline-flex items-center transition shadow-lg ring-2 ring-blue-300 ring-offset-1">
-                      <span class="material-icons text-sm mr-1">print</span> PRINT RESMI
+                    <button on:click={() => cetakVisum(v)} class="bg-blue-600 hover:bg-blue-700 text-white px-2 md:px-4 py-1.5 md:py-2 rounded-lg font-black text-[10px] md:text-xs inline-flex items-center transition shadow-lg ring-1 md:ring-2 ring-blue-300 ring-offset-1 w-full md:w-auto justify-center">
+                      <span class="material-icons text-xs md:text-sm mr-1">print</span> PRINT
                     </button>
                   {/if}
                   
                   {#if !v.status_approval}
-                    <button on:click={() => hapusVisum(v.id)} class="text-red-400 hover:text-red-600 p-2 rounded-full transition ml-2" title="Hapus"><span class="material-icons text-sm">delete</span></button>
+                    <button on:click={() => hapusVisum(v.id)} class="text-red-400 hover:text-red-600 p-1 md:p-2 rounded-full transition md:ml-2 align-middle" title="Hapus"><span class="material-icons text-sm md:text-base">delete</span></button>
                   {/if}
                 </td>
               </tr>
@@ -565,4 +565,117 @@ DRTYGHY7JHJKKK988O898
 <style>
   .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ==========================================
+     🚀 OPTIMASI UI/UX FORM VISUM KHUSUS MOBILE
+     ========================================== */
+  @media screen and (max-width: 768px) {
+    /* 1. Perbaikan Header & Logo (Agar logo tidak menabrak teks) */
+    .max-w-5xl.mx-auto > .text-center.relative {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 10px;
+    }
+    .max-w-5xl.mx-auto img[alt="Logo Kab Malang"] {
+      position: static !important; /* Mematikan absolute */
+      width: 70px !important;
+      margin-bottom: 15px;
+    }
+    h1.text-3xl { font-size: 1.5rem !important; line-height: 1.2; margin-bottom: 5px; }
+    h2.text-2xl { font-size: 1.1rem !important; }
+
+    /* 2. Pro Justitia & Kotak Visum (Susun Atas-Bawah) */
+    .flex.justify-between.items-start.mb-6 {
+      flex-direction: column-reverse;
+      gap: 15px;
+    }
+    .flex.justify-between.items-start.mb-6 > .text-right {
+      text-align: left;
+      width: 100%;
+    }
+    .flex.justify-between.items-start.mb-6 h2 { width: 100%; text-align: center; }
+
+    /* 3. Input Paragraf (Narasi Pembuka) Anti-Zoom iOS */
+    input[type="date"], input[type="time"], input[type="text"], textarea, select {
+      font-size: 16px !important; /* WAJIB: Mencegah Auto-Zoom di iPhone/iPad */
+    }
+    p.leading-relaxed input {
+      padding: 4px 8px;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1 !important;
+      border-radius: 6px;
+      margin: 2px 0;
+    }
+
+    /* 4. Tabel Identitas Korban (Dibuat menyusun ke bawah/Stacking) */
+    table.w-full.ml-8 { margin-left: 0 !important; }
+    table.w-full.ml-8 td { 
+      display: block; 
+      width: 100% !important; 
+      padding: 2px 0; 
+    }
+    table.w-full.ml-8 tr { 
+      display: block; 
+      margin-bottom: 12px; 
+      border-bottom: 1px dashed #e2e8f0; 
+      padding-bottom: 8px;
+    }
+    table.w-full.ml-8 input, table.w-full.ml-8 select {
+      width: 100% !important;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 6px;
+    }
+
+    /* 5. Tanda Vital & Pemeriksaan Luar (Ubah Grid 2 Kolom jadi 1 Kolom) */
+    .grid.grid-cols-2 {
+      grid-template-columns: 1fr !important;
+      gap: 12px !important;
+      margin-left: 0 !important;
+    }
+    
+    /* Layout Label -> Input agar nyaman disentuh */
+    .grid div {
+      display: flex;
+      flex-direction: column;
+      font-size: 14px;
+      color: #334155;
+    }
+    .grid div input {
+      width: 100% !important;
+      padding: 10px !important;
+      border: 1px solid #cbd5e1 !important;
+      border-radius: 8px;
+      background: #f8fafc;
+      margin-top: 4px;
+      margin-left: 0 !important;
+    }
+
+    /* Perbaikan Khusus Organ (Kepala, Mata, dll) */
+    .flex.items-center span.w-24 { width: 100% !important; margin-bottom: 4px; font-weight: 700; color: #0f172a;}
+    .flex.items-center { flex-direction: column; align-items: flex-start; }
+
+    /* 6. Kotak Tanda Tangan Dokter & Kapus */
+    .flex.justify-between.mt-12.mb-8 {
+      flex-direction: column;
+      gap: 40px;
+      align-items: center;
+    }
+    .w-64 { width: 100% !important; }
+    .w-64 input { background: #f8fafc; border: 1px solid #cbd5e1 !important; padding: 5px; border-radius: 6px;}
+
+    /* 7. Tombol Aksi Simpan & Batal Bawah (Full Width) */
+    .bg-slate-100.p-4.rounded-xl.flex {
+      flex-direction: column;
+      gap: 10px;
+    }
+    .bg-slate-100.p-4.rounded-xl.flex button {
+      width: 100%;
+      justify-content: center;
+      padding: 14px 0;
+    }
+  }
 </style>
