@@ -93,6 +93,7 @@
       <button on:click={() => switchView('app-jaga-input')} class="hover:text-udemy-purple hover:font-bold transition-all">Operasional Shift</button>
       <button on:click={() => switchView('app-sbar')} class="hover:text-udemy-purple hover:font-bold transition-all">Form SBAR</button>
       <button on:click={() => switchView('app-insiden')} class="hover:text-udemy-purple hover:font-bold transition-all">Laporan Insiden</button>
+      <button on:click={() => switchView('visum')} class="hover:text-red-600 hover:font-bold transition-all">Laporan Visum</button>
   </div>
 
   <main class="min-h-screen pb-20">
