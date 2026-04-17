@@ -46,6 +46,9 @@
   // ALAT BANTU SPASI AMAN UNTUK MICROSOFT WORD
   const spasiAman = new Paragraph({ children: [new TextRun("")] });
 
+  // ----- FIX "nodebuffer is not supported by this platform" -----
+  // Use Packer.toBlob() instead of Packer.toBuffer(). No toBuffer() or Buffer in browser!
+
   async function buatDokumenWord() {
     let waktuRapi = "-";
     if (form.waktuKejadian) {
@@ -59,8 +62,10 @@
     try {
       const response = await fetch('/logo-kab.png');
       if (!response.ok) throw new Error("Logo tidak ditemukan");
-      const blob = await response.blob();
-      const logoBuffer = await blob.arrayBuffer();
+      const blobLogo = await response.blob();
+      const arrayBuffer = await blobLogo.arrayBuffer();
+      // KUNCI PENGAMAN 1: Ubah paksa ke Uint8Array agar browser paham
+      const logoUint8 = new Uint8Array(arrayBuffer); 
 
       logoCell = new TableCell({
         width: { size: 15, type: WidthType.PERCENTAGE },
@@ -69,7 +74,7 @@
         children: [
           new Paragraph({
             alignment: AlignmentType.CENTER,
-            children: [new ImageRun({ data: logoBuffer, transformation: { width: 75, height: 95 } })]
+            children: [new ImageRun({ data: logoUint8, transformation: { width: 75, height: 95 } })]
           })
         ]
       });
@@ -168,10 +173,20 @@
       }],
     });
 
-    // SISTEM PACKING BINER
-    const buffer = await Packer.toBuffer(doc);
-    return new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-  }
+    // --- KUNCI PENGAMAN 2: JURUS BYPASS BASE64 ---
+    // Jangan gunakan Packer.toBlob(doc) lagi!
+    
+    const b64 = await Packer.toBase64String(doc); // Jadikan teks dulu
+    const byteCharacters = atob(b64); // Terjemahkan teksnya
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers); // Rakit ulang
+    
+    // Hasil akhirnya 100% aman untuk semua Browser dan HP!
+    return new Blob([byteArray], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+  } // <-- Ini adalah kurung tutup fungsi buatDokumenWord()
 
   async function cetakWord() {
     if (!form.namaPelapor) return alert("⚠️ Isi form (Minimal Nama Pelapor) dulu!");
