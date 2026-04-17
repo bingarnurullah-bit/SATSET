@@ -8,7 +8,7 @@
   let dataLayananDinamis = {};
   
   // =====================================
-  // PERBAIKAN: IDENTITAS PASIEN (6 ITEM)
+  // IDENTITAS PASIEN
   // =====================================
   let labelIdentitas = [
     "Nama Lengkap", 
@@ -111,7 +111,6 @@
   // FUNGSI DATABASE E-BILLING SUPABASE
   // =====================================
   async function simpanDataKasir() {
-    // Array index 0 = Nama Lengkap, index 1 = NIK
     const namaPasien = identitasValues[0];
     if (!namaPasien) return alert("Mohon isi Nama Lengkap pasien sebelum menyimpan!");
 
@@ -121,7 +120,7 @@
         const { error } = await supabase.from('riwayat_kasir').update({
           tanggal: hariIni,
           nama_pasien: namaPasien,
-          rm: identitasValues[1] || "-", // Menyimpan NIK ke kolom RM di database
+          rm: identitasValues[1] || "-", 
           total_biaya: totalHarga,
           identitas: identitasValues,
           keranjang: keranjang
@@ -131,7 +130,7 @@
         const { error } = await supabase.from('riwayat_kasir').insert([{
           tanggal: hariIni,
           nama_pasien: namaPasien,
-          rm: identitasValues[1] || "-", // Menyimpan NIK ke kolom RM di database
+          rm: identitasValues[1] || "-", 
           total_biaya: totalHarga,
           identitas: identitasValues,
           keranjang: keranjang
@@ -143,7 +142,7 @@
       if (editRowKasir) batalEditKasir();
       if (showRiwayat) muatRiwayatKasir();
       
-      // PERUBAHAN: Memanggil Jurus iFrame, bukan lagi window.print() biasa
+      // JURUS IFRAME DIEKSEKUSI DI SINI (window.print() DIHAPUS)
       cetakKwitansiIframe();
 
     } catch (err) {
@@ -211,10 +210,10 @@
   // JURUS PAMUNGKAS: CETAK IFRAME (ANTI-SCREENSHOT)
   // ==========================================
   function cetakKwitansiIframe() {
-    // 1. Ambil HANYA area HTML Kwitansi yang sudah kita tandai
+    // 1. Ambil HANYA Teks & Tabel di dalam area Kwitansi
     const printContent = document.getElementById('area-cetak-kwitansi').innerHTML;
 
-    // 2. Buat Jendela Isolasi (iFrame) di latar belakang
+    // 2. Buat iFrame Tersembunyi (Ruang Isolasi)
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
     iframe.style.right = '0';
@@ -224,7 +223,7 @@
     iframe.style.border = 'none';
     document.body.appendChild(iframe);
 
-    // 3. Suntikkan HTML & CSS Murni khusus kertas cetak Kwitansi
+    // 3. Rakit Kertas Cetak F4
     const doc = iframe.contentWindow.document;
     doc.open();
     doc.write(`
@@ -233,30 +232,28 @@
       <head>
         <title>Kwitansi_EBilling_${identitasValues[0] || 'Pasien'}</title>
         <style>
-          /* Seting Kertas A4 Portrait */
-          @page { size: A4 portrait; margin: 15mm; }
+          /* Ukuran Kertas F4 Standar */
+          @page { size: 215.9mm 330.2mm; margin: 10mm 15mm; }
           body { font-family: 'Arial', sans-serif; background: white; color: black; margin: 0; padding: 0; }
           
-          /* Anti-Tabel Terpotong & Warna Tajam */
-          table { page-break-inside: auto; border-collapse: collapse; width: 100%; }
+          /* Pengunci Warna Tabel & Anti Potong */
+          table { border-collapse: collapse; width: 100%; page-break-inside: auto; }
           tr { page-break-inside: avoid; page-break-after: auto; }
           td, th { page-break-inside: avoid; color: black !important; }
-
-          /* Paksa warna background tabel tercetak (penting untuk header abu-abu) */
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-
-          /* Blokir Ekstensi Browser yang suka mengganggu form */
+          
+          /* Blokir Ekstensi Chrome (Magical dll) */
           magical-app, grammarly-extension, div[id^="magical"] { display: none !important; }
         </style>
       </head>
-      <body onload="setTimeout(function(){ window.print(); window.parent.postMessage('printSelesaiEBilling', '*'); }, 800)">
+      <body onload="setTimeout(function(){ window.print(); window.parent.postMessage('printSelesaiEBilling', '*'); }, 1000)">
         ${printContent}
       </body>
       </html>
     `);
     doc.close();
 
-    // 4. Bersihkan memori setelah kertas selesai dicetak
+    // 4. Sapu bersih iFrame setelah print tertutup
     window.addEventListener('message', function cleanup(e) {
       if (e.data === 'printSelesaiEBilling') {
         setTimeout(() => { if (document.body.contains(iframe)) document.body.removeChild(iframe); }, 500);
@@ -264,12 +261,11 @@
       }
     });
 
-    // Fallback darurat (Mencegah iframe menyangkut di RAM)
+    // Pengaman jika browser memblokir respon postMessage
     setTimeout(() => {
       if (document.body.contains(iframe)) document.body.removeChild(iframe);
     }, 8000);
   }
-
 </script>
 
 <div class="animate-fade-in bg-slate-50 min-h-screen pb-20">
@@ -700,10 +696,4 @@
   
   .custom-scroll::-webkit-scrollbar { width: 4px; }
   .custom-scroll::-webkit-scrollbar-thumb { background: #D4AF37; border-radius: 10px; }
-
-  @media print { 
-    @page { size: auto; margin: 0mm; } 
-    body { background: white !important; padding: 5mm 10mm !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } 
-    .no-print { display: none !important; } 
-  }
 </style>
