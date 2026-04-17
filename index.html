@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>SATSET - Portal Aplikasi Puskesmas</title>
+
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+
+    <script>
+      const firebaseConfig = {
+          apiKey: "AIzaSyCVXb8VpSqZ8vNk9GQ_AiThdOGhRUi7Ekc",
+          authDomain: "satsetponcokusumo.firebaseapp.com",
+          projectId: "satsetponcokusumo",
+          storageBucket: "satsetponcokusumo.firebasestorage.app",
+          messagingSenderId: "593720362045",
+          appId: "1:593720362045:web:dfa1ff3c588d6ca1d6d654"
+      };
+      firebase.initializeApp(firebaseConfig);
+    </script>
+  </head>
+  <body class="bg-slate-50 font-sans-satset text-udemy-black">
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

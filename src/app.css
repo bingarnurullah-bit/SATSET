@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { 
+    --gold: #D4AF37; 
+    --navy: #0F172A; 
+}
+
+/* Background dasar aplikasi */
+body {
+    background-color: #f8fafc;
+}
+
+/* === CSS KUSTOM SATSET === */
+.course-card { transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); cursor: pointer; }
+.course-card:hover { transform: translateY(-4px); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+.card-image-container::after { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,0); transition: background 0.3s ease; }
+.course-card:hover .card-image-container::after { background: rgba(0,0,0,0.1); }
+
+.text-gold-premium { color: var(--gold) !important; font-weight: 900; }
+.card-input { background: #FFFFFF; border: 2px solid var(--gold); border-radius: 24px; padding: 28px; }
+.label-pro { color: #000; font-weight: 800; text-transform: uppercase; font-size: 11px; margin-bottom: 6px; display: block; }
+.input-search { width: 100%; padding: 1rem; border-radius: 0.75rem; background-color: #f8fafc; border: 1.5px solid #E2E8F0; font-weight: 700; color: #0F172A; }
+.btn-add-modern { background: var(--gold) !important; color: white !important; width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; border: none; }
+.btn-add-modern:hover { transform: scale(1.15); box-shadow: 0 10px 15px rgba(212, 175, 55, 0.4); background: #c5a030 !important; }
+
+/* Animasi Muncul Halus */
+.animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

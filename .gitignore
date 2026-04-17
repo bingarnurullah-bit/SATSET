@@ -1,0 +1,16 @@
+# Folder sistem yang sangat berat (JANGAN DIUPLOAD)
+node_modules/
+
+# Folder hasil build
+dist/
+build/
+.svelte-kit/
+
+# File rahasia (Jika nanti Komandan pakai file .env)
+.env
+.env.*
+!.env.example
+
+# File sampah sistem operasi
+.DS_Store
+Thumbs.db
