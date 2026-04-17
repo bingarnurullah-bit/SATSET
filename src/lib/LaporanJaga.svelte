@@ -48,7 +48,7 @@
   let isSavingKendala = false;
 
   // =====================================
-  // STATE: REKAP PENGGUNAAN OBAT (BARU)
+  // STATE: REKAP PENGGUNAAN OBAT
   // =====================================
   let filterMulaiObat = "";
   let filterSelesaiObat = "";
@@ -83,7 +83,6 @@
     fetchObatMaster();
   });
 
-  // Trigger muat data otomatis berdasarkan Tab yang dipilih
   $: if (activeTab === 'rekap' && currentShiftJaga) {
     muatDataDanLaporan();
   }
@@ -92,7 +91,6 @@
     else tarikDataObat();
   }
 
-  // MENGAMBIL DAFTAR OBAT DARI SUPABASE
   async function fetchObatMaster() {
     try {
       const { data, error } = await supabase.from('master_obat').select('nama').order('nama', { ascending: true });
@@ -158,7 +156,6 @@
     listJaga = listJaga.filter((_, i) => i !== index);
   }
 
-  // SIMPAN PASIEN KE SUPABASE
   async function saveJaga() {
     if (!jagaNama.trim()) return alert("Nama Pasien wajib diisi!");
     
@@ -170,7 +167,6 @@
     const shiftID = `${hariIni}_${n.s}`; 
 
     try {
-      // 1. Simpan Data Pasien
       const { error } = await supabase.from('laporan_pasien').insert([{
         tanggal: hariIni,
         shift_id: shiftID,
@@ -189,7 +185,7 @@
       }]);
       if (error) throw error;
 
-      // 2. Gabungkan Kendala Shift jika kasir mengisi kolom Kendala di form Pasien
+      // Update tabel kendala jika ada
       if (jagaKendala.trim() !== "") {
         const { data: eksisting } = await supabase.from('kendala_shift').select('kendala').eq('shift_id', shiftID).single();
         let newKendala = eksisting && eksisting.kendala ? eksisting.kendala + "\n- " + jagaKendala.trim() : "- " + jagaKendala.trim();
@@ -212,7 +208,7 @@
   }
 
   // =====================================
-  // FUNGSI REKAP & LAPORAN WA (SUPABASE)
+  // FUNGSI REKAP & LAPORAN WA
   // =====================================
   async function muatDataDanLaporan() {
     if (!currentShiftJaga) return;
@@ -235,7 +231,7 @@
         return { row: p.id, nama: p.nama, rm: p.rm, terapi: p.terapi, obat: obatStr || "-", jumlah: totalJumlah, rawItems: p.items };
       });
 
-      rakitLaporanWA(pasienData, n, editKendalaShift);
+      rakitLaporanWA(pasienData, n);
     } catch (err) {
       alert("Terjadi kesalahan saat memuat data rekap.");
     } finally {
@@ -243,7 +239,8 @@
     }
   }
 
-  function rakitLaporanWA(pasienList, tim, kendalaTxt) {
+  // PERBAIKAN: Rakit Laporan WA yang lebih presisi
+  function rakitLaporanWA(pasienList, tim) {
     const dateObj = new Date();
     const dd = String(dateObj.getDate()).padStart(2, '0');
     const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -294,19 +291,19 @@
       return keys.map(k => ` • ${k}: ${obj[k]}`).join('\n') + '\n';
     };
 
-    // Gabungkan kendala shift global dengan kendala per pasien
-    let finalKendala = kendalaTxt || "";
-    let pasienKendalaArr = (pasienList || []).filter(p => p.kendala && p.kendala.trim() !== "").map(p => `• [${p.nama}]: ${p.kendala}`);
-    if (pasienKendalaArr.length > 0) {
-      finalKendala += (finalKendala ? "\n" : "") + pasienKendalaArr.join("\n");
-    }
+    // SOLUSI PAMUNGKAS KENDALA: Hanya ambil kendala yang melekat pada pasien
+    let pasienKendalaArr = (pasienList || [])
+      .filter(p => p.kendala && p.kendala.trim() !== "")
+      .map(p => `• [${p.nama}]: ${p.kendala}`);
+    
+    let finalKendala = pasienKendalaArr.length > 0 ? pasienKendalaArr.join("\n") : "- Nihil -";
 
     let txt = `🏥 *LAPORAN JAGA PKM PONCOKUSUMO*\n📅 ${tglStr} | ${shiftIcon} *Shift: ${tim.s} | Dr: ${tim.dr || '-'} | P: ${tim.p || '-'} | B: ${tim.b || '-'}*\n━━━━━━━━━━━━━━━━━━━━\n\n`;
     txt += `♿ *UNIT GAWAT DARURAT (UGD)*\n${renderPasienList(listUGD)}━━━━━━━━━━━━━━━━━━━━\n\n`;
     txt += `🌸 *KAMAR BERSALIN (KABER)*\n${renderPasienList(listKABER)}━━━━━━━━━━━━━━━━━━━━\n`;
     txt += `📦 *REKAP OBAT DAN BMHP*\n\n📍 *UGD:*\n${renderObatList(rekapObatUGD)}\n📍 *KABER:*\n${renderObatList(rekapObatKABER)}\n━━━━━━━━━━━━━━━━━━━━\n`;
     txt += `💰 *TOTAL PENDAPATAN UMUM:*\n*Rp ${totalUmum.toLocaleString('id-ID')}*\n\n━━━━━━━━━━━━━━━━━━━━\n`;
-    txt += `⚠️ *KENDALA JAGA:*\n_${finalKendala || 'Nihil'}_\n\n✅ _Laporan Selesai_`;
+    txt += `⚠️ *KENDALA JAGA:*\n_${finalKendala}_\n\n✅ _Laporan Selesai_`;
 
     txtLaporan = txt;
   }
@@ -413,78 +410,9 @@
     } catch(e) { alert("Gagal memuat rekap obat: " + e.message); } finally { isRekapLoading = false; }
   }
 
-  function downloadPDFObat() {
-    if (typeof html2pdf === 'undefined') return alert("Mesin PDF sedang disiapkan, tunggu sebentar.");
-    const elemen = document.getElementById('pdf-rekap-obat');
-    elemen.style.display = 'block';
-    html2pdf().set({
-      margin: 0.5,
-      filename: `Laporan_Obat_${filterMulaiObat}_sd_${filterSelesaiObat}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-    }).from(elemen).save().then(() => { elemen.style.display = 'none'; });
-  }
-
 </script>
 
-<svelte:head>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-</svelte:head>
-
-<div id="pdf-rekap-obat" style="display: none; padding: 20px; font-family: Arial, sans-serif; background: white; color: black;">
-  <div style="text-align: center; border-bottom: 3px solid black; padding-bottom: 10px; margin-bottom: 20px;">
-    <h2 style="font-size: 18px; font-weight: bold; margin: 0;">PEMERINTAH KABUPATEN MALANG - DINAS KESEHATAN</h2>
-    <h1 style="font-size: 22px; font-weight: 900; margin: 5px 0;">UPT PUSKESMAS PONCOKUSUMO</h1>
-    <p style="font-size: 12px; font-style: italic; margin: 0;">Jl. Raya Poncokusumo No.1, Kec. Poncokusumo, Malang</p>
-  </div>
-  
-  <h3 style="text-align: center; font-size: 16px; font-weight: bold; text-decoration: underline; margin-bottom: 5px;">LAPORAN PENGGUNAAN OBAT & BMHP</h3>
-  <p style="text-align: center; font-size: 12px; margin-top: 0; margin-bottom: 20px;">
-    Periode: {filterMulaiObat} s.d {filterSelesaiObat}
-  </p>
-
-  <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-    <thead>
-      <tr style="background-color: #f3f4f6;">
-        <th style="border: 1px solid black; padding: 8px; text-align: center; width: 5%;">No</th>
-        <th style="border: 1px solid black; padding: 8px; text-align: left; width: 50%;">Nama Obat / BMHP</th>
-        <th style="border: 1px solid black; padding: 8px; text-align: center; width: 15%;">UGD</th>
-        <th style="border: 1px solid black; padding: 8px; text-align: center; width: 15%;">KABER</th>
-        <th style="border: 1px solid black; padding: 8px; text-align: center; width: 15%;">TOTAL</th>
-      </tr>
-    </thead>
-    <tbody>
-      {#if dataRekapObat.length === 0}
-        <tr><td colspan="5" style="border: 1px solid black; padding: 8px; text-align: center; font-style: italic;">Tidak ada data obat pada periode ini.</td></tr>
-      {/if}
-      {#each dataRekapObat as o, i}
-        <tr>
-          <td style="border: 1px solid black; padding: 6px; text-align: center;">{i + 1}</td>
-          <td style="border: 1px solid black; padding: 6px;">{o.nama}</td>
-          <td style="border: 1px solid black; padding: 6px; text-align: center;">{o.ugd}</td>
-          <td style="border: 1px solid black; padding: 6px; text-align: center;">{o.kaber}</td>
-          <td style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold;">{o.total}</td>
-        </tr>
-      {/each}
-    </tbody>
-    <tfoot>
-      <tr style="background-color: #e5e7eb; font-weight: bold;">
-        <td colspan="4" style="border: 1px solid black; padding: 8px; text-align: right;">TOTAL KESELURUHAN ITEM TERPAKAI:</td>
-        <td style="border: 1px solid black; padding: 8px; text-align: center;">{totalSemuaObat}</td>
-      </tr>
-    </tfoot>
-  </table>
-
-  <div style="float: right; text-align: center; width: 250px; margin-top: 40px; font-size: 12px;">
-    <p style="margin: 0;">Poncokusumo, {new Date().toLocaleDateString('id-ID')}</p>
-    <p style="margin: 0; font-weight: bold;">Petugas Apotek / Gudang,</p>
-    <br><br><br><br>
-    <p style="margin: 0;">__________________________</p>
-  </div>
-</div>
-
-<div class="animate-fade-in bg-[#eef2f5] min-h-screen no-print pb-20">
+<div class="animate-fade-in bg-[#eef2f5] min-h-screen pb-20">
   
   {#if activeTab === 'input'}
     <div class="max-w-4xl mx-auto p-4 pt-8">
@@ -590,8 +518,9 @@
       
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
+          
           <div class="jaga-card p-5 border-l-4 border-l-red-600 bg-[#fff5f5] mb-0">
-            <label class="font-bold text-sm text-[#1c1d1f] flex items-center gap-2 mb-2"><span class="material-icons text-red-600 text-lg">warning</span> Kendala Shift Keseluruhan</label>
+            <label class="font-bold text-sm text-[#1c1d1f] flex items-center gap-2 mb-2"><span class="material-icons text-red-600 text-lg">warning</span> Kendala Shift Keseluruhan (Internal)</label>
             <textarea bind:value={editKendalaShift} rows="2" class="jaga-input bg-white" placeholder="Ketik atau update kendala shift..."></textarea>
             <button on:click={simpanKendala} disabled={isSavingKendala} class="mt-3 text-sm font-bold text-[#a435f0] hover:underline flex items-center">{#if isSavingKendala}<span class="material-icons animate-spin mr-1 text-sm">sync</span> Menyimpan...{:else}Simpan Pembaruan Kendala{/if}</button>
           </div>
@@ -668,9 +597,6 @@
             <button on:click={setBulanIniObat} class="bg-white border border-[#d1d7dc] text-[#1c1d1f] hover:bg-slate-100 font-bold px-4 py-2 rounded text-sm transition-colors">Bulan Ini</button>
             <button on:click={tarikDataObat} class="bg-[#1c1d1f] text-white hover:bg-black font-bold px-5 py-2 rounded text-sm flex items-center transition-colors shadow-md">
               <span class="material-icons text-sm mr-2 {isRekapLoading ? 'animate-spin' : ''}">search</span> Terapkan Filter
-            </button>
-            <button on:click={downloadPDFObat} class="bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-2 rounded text-sm flex items-center transition-colors shadow-md">
-              <span class="material-icons mr-2 text-sm">picture_as_pdf</span> Cetak PDF
             </button>
           </div>
         </div>
@@ -763,7 +689,7 @@
 {/if}
 
 <style>
-  /* Base & Jaga Styles (100% SAMA SEPERTI ASLINYA) */
+  /* Base & Jaga Styles */
   .jaga-card { background: white; border: 2px solid #1c1d1f; padding: 30px; margin-bottom: 30px; border-radius: 8px; box-shadow: 8px 8px 0px rgba(28, 29, 31, 0.1); }
   .jaga-input { width: 100%; padding: 12px 16px; border: 1px solid #d1d7dc; border-radius: 4px; font-weight: 500; font-size: 1rem; color: #1c1d1f; background: #ffffff; transition: all 0.2s; outline: none;}
   .jaga-input:focus { border-color: #a435f0 !important; box-shadow: inset 0 0 0 1px #a435f0; }
