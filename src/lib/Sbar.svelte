@@ -20,139 +20,44 @@
   };
 
   // ==========================================
-  // METODE CETAK: NATIVE PRINT PREVIEW + IFRAME (ANTI-EKSTENSI MAGICAL)
+  // METODE CETAK: NATIVE PRINT PREVIEW + IFRAME
   // ==========================================
   function cetakSBAR() {
     const btn = document.getElementById('btnCetakSbar');
     if (btn) btn.innerHTML = '<span class="material-icons animate-spin mr-2">sync</span> Menyiapkan Kertas...';
 
-    // 1. Ambil HTML Kertas Suci (Layer 2) yang isinya HANYA TEKS, BUKAN INPUT
     const printContent = document.getElementById('print-layer').innerHTML;
-
-    // 2. Buat iFrame (Jendela Isolasi)
     const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = 'none';
+    iframe.style.position = 'fixed'; iframe.style.right = '0'; iframe.style.bottom = '0'; iframe.style.width = '0'; iframe.style.height = '0'; iframe.style.border = 'none';
     document.body.appendChild(iframe);
 
-    // 3. Masukkan Kertas Suci ke iFrame beserta CSS Cetak F4
     const doc = iframe.contentWindow.document;
     doc.open();
+    // PERHATIKAN: Ini CSS khusus Kertas F4, bukan CSS UI Layar HP
     doc.write(`
       <!DOCTYPE html>
       <html>
       <head>
         <title>SBAR_${form.namaPasien || 'Pasien'}</title>
         <script src="https://cdn.tailwindcss.com"><\/script>
-<style>
-  /* ==========================================
-     CSS UNTUK LAYAR UI DESKTOP (LAPISAN PERTAMA)
-     ========================================== */
-  .sbar-input { border: none; border-bottom: 1px dashed #aaa; background-color: transparent; outline: none; padding: 2px 0; color: #000; width: 100%; transition: all 0.2s;}
-  .sbar-input:focus, .sbar-textarea:focus { border-bottom: 1px solid #3b82f6; background-color: #f8fafc; }
-  .sbar-inline-input { width: auto !important; min-width: 30px; display: inline-block; text-align: center; }
-  .sbar-textarea { width: 100%; border: none; padding: 0px; box-sizing: border-box; resize: vertical; outline: none; background-color: transparent; font-family: inherit; font-size: inherit; transition: all 0.2s;}
-  
-  .sbar-tabel-utama { border-collapse: collapse; font-size: 10pt; border: 2px solid #000; margin-bottom: 5px; width: 100%; color: black;}
-  .sbar-tabel-utama th, .sbar-tabel-utama td { border: 1px solid #000; }
-  .sbar-tabel-tanpa-garis { border-collapse: collapse; font-size: 10pt; width: 100%; color: black;}
-  .sbar-tabel-tanpa-garis td { border: none; padding: 3px; }
-  .sbar-huruf-besar { font-size: 24pt; font-weight: bold; margin-bottom: 3px; color: black;}
-
-  /* ==========================================
-     🚀 OPTIMASI UI/UX KHUSUS MOBILE (HP)
-     ========================================== */
-  @media screen and (max-width: 768px) {
-    /* 1. Kertas UI menjadi model "Card" yang ramah layar kecil */
-    .kertas-ui { 
-      padding: 20px 15px !important; 
-      border-radius: 16px; 
-      border: none; 
-      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); 
-      margin-top: 10px; 
-    }
-
-    /* 2. Hancurkan semua sifat baris tabel agar menyusun ke BAWAH (Stacking) */
-    table, thead, tbody, th, td, tr {
-      display: block !important;
-      width: 100% !important;
-      box-sizing: border-box;
-    }
-
-    /* 3. Pisahkan tiap bagian (S, B, A, R) menjadi seperti blok terpisah */
-    .sbar-tabel-utama > tbody > tr > td {
-      border: none !important;
-      border-bottom: 6px solid #f1f5f9 !important; /* Garis pemisah abu-abu tebal antar seksi */
-      padding: 20px 0 !important;
-      text-align: left !important;
-    }
-    .sbar-tabel-utama > tbody > tr > td:last-child { border-bottom: none !important; }
-
-    /* 4. Percantik Ikon Huruf S, B, A, R agar terlihat seperti tombol modern */
-    .sbar-huruf-besar {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 45px; height: 45px;
-      background: #2563eb; /* Warna biru aplikasi */
-      color: white;
-      border-radius: 12px; 
-      font-size: 20pt;
-      margin-right: 12px; margin-bottom: 10px;
-    }
-
-    /* 5. Teks Label & Keterangan */
-    i.font-bold { font-size: 15pt; color: #0f172a; }
-    span.text-\[8\.5pt\] { display: block; font-size: 11pt !important; color: #64748b; margin-top: 5px; }
-
-    /* 6. UX INPUT & TEXTAREA: Ramah Jari (Touch-Friendly) */
-    .sbar-input, .sbar-textarea {
-      background: #f8fafc !important;
-      border: 1px solid #cbd5e1 !important;
-      border-radius: 10px !important;
-      padding: 14px 15px !important;
-      margin-top: 8px !important;
-      margin-bottom: 15px !important;
-      font-size: 16px !important; /* WAJIB 16px: Mencegah iOS iPhone melakukan Auto-Zoom yang mengganggu */
-      width: 100% !important;
-      display: block !important;
-    }
-
-    /* 7. Pengecualian untuk input kecil yang bersebelahan (seperti TD: 120 / 80) */
-    .sbar-inline-input {
-      display: inline-block !important;
-      width: 85px !important; /* Lebar pas untuk jari */
-      padding: 12px 10px !important;
-      margin: 0 5px !important;
-      text-align: center;
-    }
-
-    /* 8. Jarak antar label di dalam sub-tabel */
-    .sbar-tabel-tanpa-garis td {
-      padding: 5px 0 !important;
-      font-weight: 600; 
-      color: #334155;
-    }
-
-    /* 9. Layout untuk Bagian Tanda Tangan & TBaK agar tidak bertumpuk / mepet */
-    td.border-r { 
-      border-right: none !important; 
-      border-bottom: 2px dashed #cbd5e1 !important; 
-      padding-bottom: 25px !important;
-      margin-bottom: 15px !important;
-    }
-    
-    /* Perbaikan tampilan tombol aksi di HP */
-    .action-buttons button {
-      width: 100%; /* Tombol memanjang penuh di HP */
-      margin-bottom: 5px;
-    }
-  }
-</style></head>
+        <style>
+          @page { size: 215.9mm 330.2mm; margin: 10mm 15mm; }
+          body { font-family: 'Times New Roman', Times, serif; background: white; color: black; margin: 0; padding: 0; }
+          magical-app, grammarly-extension, div[id^="magical"] { display: none !important; }
+          .sbar-tabel-utama { border-collapse: collapse; font-size: 10pt; border: 2px solid #000; margin-bottom: 5px; width: 100%; color: black;}
+          .sbar-tabel-utama th, .sbar-tabel-utama td { border: 1px solid #000; }
+          .sbar-tabel-tanpa-garis { border-collapse: collapse; font-size: 10pt; width: 100%; color: black;}
+          .sbar-tabel-tanpa-garis td { border: none; padding: 3px; }
+          .sbar-huruf-besar { font-size: 24pt; font-weight: bold; margin-bottom: 3px; color: black;}
+          .teks-cetak { display: inline-block; min-height: 1.2em; border-bottom: 1px dotted #000; }
+          .teks-cetak-area { display: block; min-height: 1.2em; white-space: pre-wrap; font-family: inherit; }
+          .sbar-inline-input { width: auto !important; min-width: 30px; display: inline-block; text-align: center; }
+          table { page-break-inside: auto; border-collapse: collapse !important; width: 100% !important; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          td, th { page-break-inside: avoid; color: black !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        </style>
+      </head>
       <body onload="setTimeout(function(){ window.print(); window.parent.postMessage('printSelesai', '*'); }, 1200)">
         ${printContent}
       </body>
@@ -160,7 +65,6 @@
     `);
     doc.close();
 
-    // 4. Dengarkan sinyal dari iFrame jika Print Preview sudah tertutup
     window.addEventListener('message', function cleanup(e) {
       if (e.data === 'printSelesai') {
         if (btn) btn.innerHTML = '<span class="material-icons mr-2">print</span> Cetak Form / PDF';
@@ -169,7 +73,6 @@
       }
     });
 
-    // Fallback Darurat (Jika onafterprint browser tidak jalan)
     setTimeout(() => {
       if (btn && btn.innerHTML.includes('Memproses')) btn.innerHTML = '<span class="material-icons mr-2">print</span> Cetak Form / PDF';
       if (document.body.contains(iframe)) document.body.removeChild(iframe);
@@ -436,6 +339,7 @@
                     Instruksi / anjuran dari yang menerima laporan :<br><textarea bind:value={form.instruksi} class="sbar-textarea min-h-[220px]"></textarea>
                   </td>
                   <td width="45%" class="p-2.5 align-top">
+                    
                     <table class="w-full border-collapse border border-black mb-3">
                       <tbody>
                         <tr>
@@ -740,11 +644,13 @@
 </div>
 
 <style>
-  /* CSS UNTUK LAYAR UI (LAPISAN PERTAMA) */
-  .sbar-input { border: none; border-bottom: 1px dashed #aaa; background-color: transparent; outline: none; padding: 2px 0; color: #000; width: 100%; }
+  /* ==========================================
+     CSS UNTUK LAYAR UI DESKTOP
+     ========================================== */
+  .sbar-input { border: none; border-bottom: 1px dashed #aaa; background-color: transparent; outline: none; padding: 2px 0; color: #000; width: 100%; transition: all 0.2s;}
   .sbar-input:focus, .sbar-textarea:focus { border-bottom: 1px solid #3b82f6; background-color: #f8fafc; }
   .sbar-inline-input { width: auto !important; min-width: 30px; display: inline-block; text-align: center; }
-  .sbar-textarea { width: 100%; border: none; padding: 0px; box-sizing: border-box; resize: vertical; outline: none; background-color: transparent; font-family: inherit; font-size: inherit;}
+  .sbar-textarea { width: 100%; border: none; padding: 0px; box-sizing: border-box; resize: vertical; outline: none; background-color: transparent; font-family: inherit; font-size: inherit; transition: all 0.2s;}
   
   .sbar-tabel-utama { border-collapse: collapse; font-size: 10pt; border: 2px solid #000; margin-bottom: 5px; width: 100%; color: black;}
   .sbar-tabel-utama th, .sbar-tabel-utama td { border: 1px solid #000; }
@@ -752,12 +658,93 @@
   .sbar-tabel-tanpa-garis td { border: none; padding: 3px; }
   .sbar-huruf-besar { font-size: 24pt; font-weight: bold; margin-bottom: 3px; color: black;}
 
+  /* ==========================================
+     🚀 OPTIMASI UI/UX KHUSUS MOBILE (HP)
+     ========================================== */
   @media screen and (max-width: 768px) {
-    .kertas-ui { padding: 15px 12px !important; border-radius: 12px; }
-    .sbar-tabel-utama, .sbar-tabel-utama > tbody, .sbar-tabel-utama > tbody > tr, .sbar-tabel-utama > tbody > tr > td { display: block; width: 100% !important; box-sizing: border-box; }
-    .sbar-tabel-utama > tbody > tr > td { border: none; border-bottom: 3px solid #1c1d1f; padding: 15px 10px !important; text-align: left !important; }
-    .sbar-tabel-utama > tbody > tr > td:last-child { border-bottom: none; }
-    .sbar-huruf-besar { display: inline-block; font-size: 18pt; margin-right: 8px; margin-bottom: 5px; vertical-align: middle; }
-    .sbar-input, .sbar-textarea { background: #f1f5f9 !important; border: 1.5px solid #cbd5e1 !important; border-radius: 8px !important; padding: 10px !important; }
+    /* 1. Kertas UI menjadi model "Card" yang ramah layar kecil */
+    .kertas-ui { 
+      padding: 20px 15px !important; 
+      border-radius: 16px; 
+      border: none; 
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); 
+      margin-top: 10px; 
+    }
+
+    /* 2. Hancurkan semua sifat baris tabel agar menyusun ke BAWAH (Stacking) */
+    table, thead, tbody, th, td, tr {
+      display: block !important;
+      width: 100% !important;
+      box-sizing: border-box;
+    }
+
+    /* 3. Pisahkan tiap bagian (S, B, A, R) menjadi seperti blok terpisah */
+    .sbar-tabel-utama > tbody > tr > td {
+      border: none !important;
+      border-bottom: 6px solid #f1f5f9 !important;
+      padding: 20px 0 !important;
+      text-align: left !important;
+    }
+    .sbar-tabel-utama > tbody > tr > td:last-child { border-bottom: none !important; }
+
+    /* 4. Percantik Ikon Huruf S, B, A, R agar terlihat seperti tombol modern */
+    .sbar-huruf-besar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 45px; height: 45px;
+      background: #2563eb; 
+      color: white;
+      border-radius: 12px; 
+      font-size: 20pt;
+      margin-right: 12px; margin-bottom: 10px;
+    }
+
+    /* 5. Teks Label & Keterangan */
+    i.font-bold { font-size: 15pt; color: #0f172a; }
+    span.text-\[8\.5pt\] { display: block; font-size: 11pt !important; color: #64748b; margin-top: 5px; }
+
+    /* 6. UX INPUT & TEXTAREA: Ramah Jari */
+    .sbar-input, .sbar-textarea {
+      background: #f8fafc !important;
+      border: 1px solid #cbd5e1 !important;
+      border-radius: 10px !important;
+      padding: 14px 15px !important;
+      margin-top: 8px !important;
+      margin-bottom: 15px !important;
+      font-size: 16px !important; 
+      width: 100% !important;
+      display: block !important;
+    }
+
+    /* 7. Pengecualian untuk input kecil yang bersebelahan (seperti TD) */
+    .sbar-inline-input {
+      display: inline-block !important;
+      width: 85px !important; 
+      padding: 12px 10px !important;
+      margin: 0 5px !important;
+      text-align: center;
+    }
+
+    /* 8. Jarak antar label di dalam sub-tabel */
+    .sbar-tabel-tanpa-garis td {
+      padding: 5px 0 !important;
+      font-weight: 600; 
+      color: #334155;
+    }
+
+    /* 9. Layout untuk Bagian Tanda Tangan & TBaK agar tidak mepet */
+    td.border-r { 
+      border-right: none !important; 
+      border-bottom: 2px dashed #cbd5e1 !important; 
+      padding-bottom: 25px !important;
+      margin-bottom: 15px !important;
+    }
+    
+    /* Perbaikan tampilan tombol aksi di HP */
+    .action-buttons button {
+      width: 100%; 
+      margin-bottom: 5px;
+    }
   }
 </style>
