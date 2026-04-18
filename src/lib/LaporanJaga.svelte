@@ -91,19 +91,26 @@
     else tarikDataObat();
   }
 
-  async function fetchObatMaster() {
+async function fetchObatMaster() {
     try {
-      const { data, error } = await supabase.from('master_obat').select('nama').order('nama', { ascending: true });
+      // 1. UBAH RADAR: Sekarang menyedot data dari 'stok_obat_jaga', bukan 'master_obat'
+      const { data, error } = await supabase
+        .from('stok_obat_jaga')
+        .select('nama, stok') // Kita ambil juga info stoknya untuk jaga-jaga
+        .order('nama', { ascending: true });
+        
       if (error) throw error;
       
+      // 2. Filter: Opsional, kita bisa menyembunyikan obat yang stoknya sudah 0
+      // Tapi untuk sekarang, kita tampilkan semua nama obat yang terdaftar di etalase jaga
       const daftarNama = data.map(o => o.nama);
+      
       jagaObatUmum = daftarNama;
       jagaObatKaber = daftarNama;
     } catch (e) {
-      console.log("Gagal memuat daftar obat:", e.message);
+      console.log("Gagal memuat daftar obat jaga:", e.message);
     }
   }
-
   // =====================================
   // FUNGSI TIM JAGA
   // =====================================
