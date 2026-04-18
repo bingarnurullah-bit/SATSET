@@ -2,9 +2,8 @@
   import { onMount } from 'svelte';
   import { supabase } from './supabase.js';
 
-  // Props dari App.svelte
   export let switchView;
-  export let activeTab = 'input'; // 'input', 'rekap', 'rekapObat'
+  export let activeTab = 'input'; 
 
   // =====================================
   // STATE: TIM JAGA
@@ -28,20 +27,29 @@
   
   let obatInput = "";
   let qtyInput = 1;
-  let listJaga = []; // Keranjang obat pasien
+  let listJaga = []; 
   
   // =====================================
-  // PERBAIKAN 1: RADAR AUTOCOMPLETE
+  // MASTER DATA OBAT (SANGAT PENTING)
   // =====================================
-  let showDropdown = false;
-  // Radar ini otomatis menyaring daftar obat saat user mengetik
-  $: filteredObat = obatInput ? activeObatList.filter(o => o.toLowerCase().includes(obatInput.toLowerCase())) : [];
-  
-  // Master Data Obat
   let jagaObatUmum = [];
   let jagaObatKaber = [];
-  $: activeObatList = jagaRuangan === "KABER" ? jagaObatKaber : jagaObatUmum;
-  $: listObatDataAll = [...jagaObatUmum, ...jagaObatKaber];
+  
+  // Menggunakan getter reaktif yang aman
+  $: activeObatList = (jagaRuangan === "KABER" ? jagaObatKaber : jagaObatUmum) || [];
+  $: listObatDataAll = [...jagaObatUmum, ...jagaObatKaber] || [];
+
+  // =====================================
+  // RADAR AUTOCOMPLETE (SOLUSI FINAL)
+  // =====================================
+  let showDropdown = false;
+  
+  // Logika Filter Kuat: Jika kosong, tampilkan semua. Jika diketik, saring. Abaikan case-sensitive.
+  $: filteredObat = activeObatList.filter(o => {
+    if (!o) return false;
+    if (!obatInput) return true; // Tampilkan semua jika input kosong
+    return o.toLowerCase().includes(obatInput.toLowerCase());
+  });
 
   let isSavingJaga = false;
 
@@ -82,14 +90,20 @@
   let addObatJumlah = 1;
   let isSavingAdd = false;
   let showDropdownTambah = false;
-  $: filteredObatTambah = addObatInput ? listObatDataAll.filter(o => o.toLowerCase().includes(addObatInput.toLowerCase())) : [];
+  
+  // Radar Tambah Susulan
+  $: filteredObatTambah = listObatDataAll.filter(o => {
+    if (!o) return false;
+    if (!addObatInput) return true;
+    return o.toLowerCase().includes(addObatInput.toLowerCase());
+  });
 
   // =====================================
   // INISIALISASI
   // =====================================
-  onMount(() => {
+  onMount(async () => {
     checkNakes();
-    fetchObatMaster();
+    await fetchObatMaster();
   });
 
   $: if (activeTab === 'rekap' && currentShiftJaga) {
@@ -100,22 +114,31 @@
     else tarikDataObat();
   }
 
+  // =====================================
+  // FUNGSI PENYEDOT DATA (DIPERKUAT)
+  // =====================================
   async function fetchObatMaster() {
     try {
-      // Menyedot data dari 'stok_obat_jaga'
+      console.log("Mencoba mengambil data dari stok_obat_jaga...");
       const { data, error } = await supabase
         .from('stok_obat_jaga')
-        .select('nama, stok') 
+        .select('nama') 
         .order('nama', { ascending: true });
         
       if (error) throw error;
       
-      const daftarNama = data.map(o => o.nama);
-      
-      jagaObatUmum = daftarNama;
-      jagaObatKaber = daftarNama;
+      if (data && data.length > 0) {
+        console.log(`Berhasil mengambil ${data.length} obat dari database.`);
+        const daftarNama = data.map(o => o.nama).filter(Boolean); // Ambil nama dan buang yang null/kosong
+        
+        jagaObatUmum = [...daftarNama];
+        jagaObatKaber = [...daftarNama];
+      } else {
+        console.warn("Tabel stok_obat_jaga kosong atau tidak bisa diakses!");
+      }
     } catch (e) {
-      console.log("Gagal memuat daftar obat jaga:", e.message);
+      console.error("Gagal memuat daftar obat jaga:", e.message);
+      alert("Peringatan: Gagal memuat daftar obat. Periksa koneksi Supabase.");
     }
   }
 
@@ -165,7 +188,7 @@
     }];
     obatInput = "";
     qtyInput = 1;
-    showDropdown = false; // Tutup dropdown setelah menambah
+    showDropdown = false;
   }
 
   function hapusJagaItem(index) {
@@ -207,7 +230,7 @@
         await supabase.from('kendala_shift').upsert({ shift_id: shiftID, kendala: newKendala });
       }
 
-      // MESIN PEMOTONG STOK OTOMATIS
+      // MESIN PEMOTONG STOK
       for (const item of itemsToSave) {
         if (item.obat !== "-" && item.status === "STOK") {
           const { data: obatDiLaci } = await supabase
@@ -441,7 +464,6 @@
       dataRekapObat = Object.values(rekap).sort((a,b) => b.total - a.total);
     } catch(e) { alert("Gagal memuat rekap obat: " + e.message); } finally { isRekapLoading = false; }
   }
-
 </script>
 
 <div class="animate-fade-in bg-[#eef2f5] min-h-screen pb-20">
@@ -518,20 +540,28 @@
                 <input type="text" 
                        bind:value={obatInput} 
                        on:focus={() => showDropdown = true}
-                       on:blur={() => setTimeout(() => showDropdown = false, 200)}
+                       on:click={() => showDropdown = true}
+                       on:input={() => showDropdown = true}
+                       on:blur={() => setTimeout(() => showDropdown = false, 300)}
                        autocomplete="off"
                        class="jaga-input uppercase" 
-                       placeholder="Ketik nama obat/alkes...">
+                       placeholder="Ketik atau klik untuk pilih obat...">
                 
-                {#if showDropdown && filteredObat.length > 0}
-                  <ul class="absolute z-50 w-full mt-1 bg-white border-2 border-[#1c1d1f] shadow-xl max-h-48 overflow-y-auto rounded-md">
-                    {#each filteredObat as o}
-                      <li on:click={() => { obatInput = o; showDropdown = false; }} 
-                          class="px-4 py-2.5 hover:bg-[#a435f0] hover:text-white cursor-pointer text-sm font-bold border-b border-gray-100 transition-colors">
-                        {o}
-                      </li>
-                    {/each}
-                  </ul>
+                {#if showDropdown}
+                  {#if filteredObat.length > 0}
+                    <ul class="absolute z-[9999] w-full mt-1 bg-white border-2 border-[#1c1d1f] shadow-2xl max-h-56 overflow-y-auto rounded-md">
+                      {#each filteredObat as o}
+                        <li on:mousedown|preventDefault={() => { obatInput = o; showDropdown = false; }} 
+                            class="px-4 py-3 hover:bg-[#a435f0] hover:text-white cursor-pointer text-sm font-bold border-b border-gray-100 transition-colors">
+                          {o}
+                        </li>
+                      {/each}
+                    </ul>
+                  {:else}
+                    <ul class="absolute z-[9999] w-full mt-1 bg-white border-2 border-[#1c1d1f] shadow-2xl rounded-md p-3">
+                      <li class="text-xs text-gray-500 italic text-center">Data obat tidak ditemukan...</li>
+                    </ul>
+                  {/if}
                 {/if}
               </div>
 
@@ -736,20 +766,28 @@
           <input type="text" 
                  bind:value={addObatInput} 
                  on:focus={() => showDropdownTambah = true}
-                 on:blur={() => setTimeout(() => showDropdownTambah = false, 200)}
+                 on:click={() => showDropdownTambah = true}
+                 on:input={() => showDropdownTambah = true}
+                 on:blur={() => setTimeout(() => showDropdownTambah = false, 300)}
                  autocomplete="off"
                  class="jaga-input uppercase" 
                  placeholder="Ketik...">
                  
-          {#if showDropdownTambah && filteredObatTambah.length > 0}
-            <ul class="absolute z-50 w-full mt-1 bg-white border-2 border-[#1c1d1f] shadow-xl max-h-40 overflow-y-auto rounded-md">
-              {#each filteredObatTambah as o}
-                <li on:click={() => { addObatInput = o; showDropdownTambah = false; }} 
-                    class="px-4 py-2 hover:bg-[#a435f0] hover:text-white cursor-pointer text-sm font-bold border-b border-gray-100 transition-colors">
-                  {o}
-                </li>
-              {/each}
-            </ul>
+          {#if showDropdownTambah}
+            {#if filteredObatTambah.length > 0}
+              <ul class="absolute z-[9999] w-full mt-1 bg-white border-2 border-[#1c1d1f] shadow-xl max-h-40 overflow-y-auto rounded-md">
+                {#each filteredObatTambah as o}
+                  <li on:mousedown|preventDefault={() => { addObatInput = o; showDropdownTambah = false; }} 
+                      class="px-4 py-2 hover:bg-[#a435f0] hover:text-white cursor-pointer text-sm font-bold border-b border-gray-100 transition-colors">
+                    {o}
+                  </li>
+                {/each}
+              </ul>
+            {:else}
+              <ul class="absolute z-[9999] w-full mt-1 bg-white border-2 border-[#1c1d1f] shadow-xl rounded-md p-3">
+                <li class="text-xs text-gray-500 italic text-center">Data obat tidak ditemukan...</li>
+              </ul>
+            {/if}
           {/if}
         </div>
 
