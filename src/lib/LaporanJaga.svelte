@@ -29,7 +29,12 @@
   let obatInput = "";
   let qtyInput = 1;
   let listJaga = []; // Keranjang obat pasien
+  
+  // =====================================
+  // PERBAIKAN 1: RADAR AUTOCOMPLETE
+  // =====================================
   let showDropdown = false;
+  // Radar ini otomatis menyaring daftar obat saat user mengetik
   $: filteredObat = obatInput ? activeObatList.filter(o => o.toLowerCase().includes(obatInput.toLowerCase())) : [];
   
   // Master Data Obat
@@ -76,6 +81,8 @@
   let addObatInput = "";
   let addObatJumlah = 1;
   let isSavingAdd = false;
+  let showDropdownTambah = false;
+  $: filteredObatTambah = addObatInput ? listObatDataAll.filter(o => o.toLowerCase().includes(addObatInput.toLowerCase())) : [];
 
   // =====================================
   // INISIALISASI
@@ -93,18 +100,16 @@
     else tarikDataObat();
   }
 
-async function fetchObatMaster() {
+  async function fetchObatMaster() {
     try {
-      // 1. UBAH RADAR: Sekarang menyedot data dari 'stok_obat_jaga', bukan 'master_obat'
+      // Menyedot data dari 'stok_obat_jaga'
       const { data, error } = await supabase
         .from('stok_obat_jaga')
-        .select('nama, stok') // Kita ambil juga info stoknya untuk jaga-jaga
+        .select('nama, stok') 
         .order('nama', { ascending: true });
         
       if (error) throw error;
       
-      // 2. Filter: Opsional, kita bisa menyembunyikan obat yang stoknya sudah 0
-      // Tapi untuk sekarang, kita tampilkan semua nama obat yang terdaftar di etalase jaga
       const daftarNama = data.map(o => o.nama);
       
       jagaObatUmum = daftarNama;
@@ -113,6 +118,7 @@ async function fetchObatMaster() {
       console.log("Gagal memuat daftar obat jaga:", e.message);
     }
   }
+
   // =====================================
   // FUNGSI TIM JAGA
   // =====================================
@@ -159,13 +165,14 @@ async function fetchObatMaster() {
     }];
     obatInput = "";
     qtyInput = 1;
+    showDropdown = false; // Tutup dropdown setelah menambah
   }
 
   function hapusJagaItem(index) {
     listJaga = listJaga.filter((_, i) => i !== index);
   }
 
-async function saveJaga() {
+  async function saveJaga() {
     if (!jagaNama.trim()) return alert("Nama Pasien wajib diisi!");
     
     isSavingJaga = true;
@@ -176,7 +183,6 @@ async function saveJaga() {
     const shiftID = `${hariIni}_${n.s}`; 
 
     try {
-      // 1. Simpan Data Laporan Pasien ke Database
       const { error } = await supabase.from('laporan_pasien').insert([{
         tanggal: hariIni,
         shift_id: shiftID,
@@ -195,32 +201,23 @@ async function saveJaga() {
       }]);
       if (error) throw error;
 
-      // 2. Simpan Catatan Kendala (Jika ada)
       if (jagaKendala.trim() !== "") {
         const { data: eksisting } = await supabase.from('kendala_shift').select('kendala').eq('shift_id', shiftID).single();
         let newKendala = eksisting && eksisting.kendala ? eksisting.kendala + "\n- " + jagaKendala.trim() : "- " + jagaKendala.trim();
         await supabase.from('kendala_shift').upsert({ shift_id: shiftID, kendala: newKendala });
       }
 
-      // ========================================================
-      // 3. MESIN PEMOTONG STOK OTOMATIS (Target: stok_obat_jaga)
-      // ========================================================
+      // MESIN PEMOTONG STOK OTOMATIS
       for (const item of itemsToSave) {
-        // Hanya proses obat yang ada di daftar stok resmi (Bukan manual)
         if (item.obat !== "-" && item.status === "STOK") {
-          
-          // A. Buka laci 'stok_obat_jaga', lihat sisa stok saat ini
           const { data: obatDiLaci } = await supabase
             .from('stok_obat_jaga')
             .select('stok')
             .eq('nama', item.obat)
             .single();
 
-          // B. Jika obatnya ketemu di laci, lakukan pengurangan matematika
           if (obatDiLaci) {
             const sisaBaru = obatDiLaci.stok - item.jumlah;
-            
-            // C. Simpan angka sisa yang baru ke database
             await supabase
               .from('stok_obat_jaga')
               .update({ stok: sisaBaru })
@@ -228,7 +225,6 @@ async function saveJaga() {
           }
         }
       }
-      // ========================================================
 
       alert("Data Berhasil Tersimpan & Stok Jaga Otomatis Terpotong! 📦✂️");
       resetJaga();
@@ -277,7 +273,6 @@ async function saveJaga() {
     }
   }
 
-  // PERBAIKAN: Rakit Laporan WA yang lebih presisi
   function rakitLaporanWA(pasienList, tim) {
     const dateObj = new Date();
     const dd = String(dateObj.getDate()).padStart(2, '0');
@@ -329,7 +324,6 @@ async function saveJaga() {
       return keys.map(k => ` • ${k}: ${obj[k]}`).join('\n') + '\n';
     };
 
-    // SOLUSI PAMUNGKAS KENDALA: Hanya ambil kendala yang melekat pada pasien
     let pasienKendalaArr = (pasienList || [])
       .filter(p => p.kendala && p.kendala.trim() !== "")
       .map(p => `• [${p.nama}]: ${p.kendala}`);
@@ -390,7 +384,7 @@ async function saveJaga() {
 
   function bukaModalTambahObat(row, nama, rm) {
     addObatRow = row; addObatNama = (nama !== "-" ? nama : ""); addObatRM = (rm !== "-" ? rm : "");
-    addObatInput = ""; addObatJumlah = 1; showModalTambah = true;
+    addObatInput = ""; addObatJumlah = 1; showModalTambah = true; showDropdownTambah = false;
   }
 
   async function simpanTambahObatJaga() {
@@ -519,9 +513,33 @@ async function saveJaga() {
           <div class="mt-10 p-6 bg-[#f7f9fa] border-2 border-dashed border-[#1c1d1f]">
             <h3 class="font-extrabold text-base mb-4 uppercase tracking-wider">📦 Resep Obat & BMHP</h3>
             <div class="flex flex-col sm:flex-row gap-3">
-              <div class="flex-1"><input type="text" bind:value={obatInput} list="jaga-obatData" class="jaga-input" placeholder="Ketik nama obat/alkes..."><datalist id="jaga-obatData">{#each activeObatList as o}<option value={o}></option>{/each}</datalist></div>
-              <div class="w-full sm:w-24 text-center"><input type="number" bind:value={qtyInput} min="1" class="jaga-input text-center"></div>
+              
+              <div class="flex-1 relative">
+                <input type="text" 
+                       bind:value={obatInput} 
+                       on:focus={() => showDropdown = true}
+                       on:blur={() => setTimeout(() => showDropdown = false, 200)}
+                       autocomplete="off"
+                       class="jaga-input uppercase" 
+                       placeholder="Ketik nama obat/alkes...">
+                
+                {#if showDropdown && filteredObat.length > 0}
+                  <ul class="absolute z-50 w-full mt-1 bg-white border-2 border-[#1c1d1f] shadow-xl max-h-48 overflow-y-auto rounded-md">
+                    {#each filteredObat as o}
+                      <li on:click={() => { obatInput = o; showDropdown = false; }} 
+                          class="px-4 py-2.5 hover:bg-[#a435f0] hover:text-white cursor-pointer text-sm font-bold border-b border-gray-100 transition-colors">
+                        {o}
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
+              </div>
+
+              <div class="w-full sm:w-24 text-center">
+                <input type="number" bind:value={qtyInput} min="1" class="jaga-input text-center">
+              </div>
             </div>
+            
             <button on:click={addJagaItem} class="mt-4 jaga-btn-secondary text-xs py-2 uppercase tracking-tighter">Masukkan ke Daftar Penggunaan</button>
             <div class="mt-4 space-y-2">
               {#each listJaga as it, i}
@@ -710,14 +728,34 @@ async function saveJaga() {
       <button on:click={() => showModalTambah = false} class="absolute top-4 right-4 text-gray-400 hover:text-black"><span class="material-icons">close</span></button>
       <h3 class="font-bold text-xl mb-2 text-[#1c1d1f]">Tambah Obat Susulan</h3>
       <div class="mb-5 text-sm text-[#6a6f73]">Pasien: <span class="font-bold text-black">{addObatNama}</span> (RM: {addObatRM})</div>
+      
       <div class="space-y-4 text-sm">
-        <div>
+        
+        <div class="relative">
           <label class="font-bold block mb-1">Ketik Nama Obat</label>
-          <input type="text" bind:value={addObatInput} list="listObatDataAll" class="jaga-input uppercase" placeholder="Ketik...">
-          <datalist id="listObatDataAll">{#each listObatDataAll as o}<option value={o}></option>{/each}</datalist>
+          <input type="text" 
+                 bind:value={addObatInput} 
+                 on:focus={() => showDropdownTambah = true}
+                 on:blur={() => setTimeout(() => showDropdownTambah = false, 200)}
+                 autocomplete="off"
+                 class="jaga-input uppercase" 
+                 placeholder="Ketik...">
+                 
+          {#if showDropdownTambah && filteredObatTambah.length > 0}
+            <ul class="absolute z-50 w-full mt-1 bg-white border-2 border-[#1c1d1f] shadow-xl max-h-40 overflow-y-auto rounded-md">
+              {#each filteredObatTambah as o}
+                <li on:click={() => { addObatInput = o; showDropdownTambah = false; }} 
+                    class="px-4 py-2 hover:bg-[#a435f0] hover:text-white cursor-pointer text-sm font-bold border-b border-gray-100 transition-colors">
+                  {o}
+                </li>
+              {/each}
+            </ul>
+          {/if}
         </div>
+
         <div><label class="font-bold block mb-1">Jumlah</label><input type="number" bind:value={addObatJumlah} min="1" class="jaga-input"></div>
       </div>
+      
       <div class="flex justify-end gap-3 mt-8">
         <button on:click={() => showModalTambah = false} class="jaga-btn-secondary w-auto px-6 py-2.5">Batal</button>
         <button on:click={simpanTambahObatJaga} disabled={isSavingAdd} class="jaga-btn-primary w-auto bg-[#a435f0] border-[#a435f0] px-6 py-2.5 flex items-center">{#if isSavingAdd}<span class="material-icons animate-spin mr-2 text-sm">sync</span>{/if} Tambahkan</button>
