@@ -156,7 +156,7 @@
     listJaga = listJaga.filter((_, i) => i !== index);
   }
 
-  async function saveJaga() {
+async function saveJaga() {
     if (!jagaNama.trim()) return alert("Nama Pasien wajib diisi!");
     
     isSavingJaga = true;
@@ -167,6 +167,7 @@
     const shiftID = `${hariIni}_${n.s}`; 
 
     try {
+      // 1. Simpan Data Laporan Pasien ke Database
       const { error } = await supabase.from('laporan_pasien').insert([{
         tanggal: hariIni,
         shift_id: shiftID,
@@ -185,14 +186,42 @@
       }]);
       if (error) throw error;
 
-      // Update tabel kendala jika ada
+      // 2. Simpan Catatan Kendala (Jika ada)
       if (jagaKendala.trim() !== "") {
         const { data: eksisting } = await supabase.from('kendala_shift').select('kendala').eq('shift_id', shiftID).single();
         let newKendala = eksisting && eksisting.kendala ? eksisting.kendala + "\n- " + jagaKendala.trim() : "- " + jagaKendala.trim();
         await supabase.from('kendala_shift').upsert({ shift_id: shiftID, kendala: newKendala });
       }
 
-      alert("Data Berhasil Tersimpan!");
+      // ========================================================
+      // 3. MESIN PEMOTONG STOK OTOMATIS (Target: stok_obat_jaga)
+      // ========================================================
+      for (const item of itemsToSave) {
+        // Hanya proses obat yang ada di daftar stok resmi (Bukan manual)
+        if (item.obat !== "-" && item.status === "STOK") {
+          
+          // A. Buka laci 'stok_obat_jaga', lihat sisa stok saat ini
+          const { data: obatDiLaci } = await supabase
+            .from('stok_obat_jaga')
+            .select('stok')
+            .eq('nama', item.obat)
+            .single();
+
+          // B. Jika obatnya ketemu di laci, lakukan pengurangan matematika
+          if (obatDiLaci) {
+            const sisaBaru = obatDiLaci.stok - item.jumlah;
+            
+            // C. Simpan angka sisa yang baru ke database
+            await supabase
+              .from('stok_obat_jaga')
+              .update({ stok: sisaBaru })
+              .eq('nama', item.obat);
+          }
+        }
+      }
+      // ========================================================
+
+      alert("Data Berhasil Tersimpan & Stok Jaga Otomatis Terpotong! 📦✂️");
       resetJaga();
     } catch (err) {
       alert("Gagal terhubung ke database: " + err.message);
@@ -200,7 +229,7 @@
       isSavingJaga = false;
     }
   }
-
+  
   function resetJaga() {
     jagaNama = ""; jagaTglLahir = ""; jagaNorm = ""; jagaDiagnosa = "";
     jagaTerapi = ""; jagaKendala = ""; jagaBiaya = "0";
