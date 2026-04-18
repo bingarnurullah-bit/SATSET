@@ -8,7 +8,7 @@
   import Insiden from './lib/Insiden.svelte'; 
   import Riwayat from './lib/Riwayat.svelte';
   import Admin from './lib/Admin.svelte';
-  import Visum from './lib/Visum.svelte'; // <--- PERBAIKAN: SUDAH MENGGUNAKAN './lib/Visum.svelte'
+  import Visum from './lib/Visum.svelte';
 
   let user = null;
   let currentView = 'dashboard'; 
@@ -18,15 +18,25 @@
   const API_URL = "https://script.google.com/macros/s/AKfycbyac04k5lum4iD443YfCDjZt13IIbh3dANpBsY-1eYSLa8prx79xV9wnkcaRwhyw26GMw/exec";
 
   onMount(() => {
-    // 1. Cek Login Firebase
-    window.firebase.auth().onAuthStateChanged((u) => {
-      user = u;
-      if(user) muatMasterData(); // Kalau login berhasil, langsung ambil data
-      
-      setTimeout(() => {
-        if(window.lucide) window.lucide.createIcons();
-      }, 100);
-    });
+    // ========================================================
+    // KUNCI KEAMANAN: Paksa Firebase masuk mode SESSION
+    // Tiket login akan otomatis hangus saat browser/tab ditutup
+    // ========================================================
+    window.firebase.auth().setPersistence(window.firebase.auth.Auth.Persistence.SESSION)
+      .then(() => {
+        // Setelah mode aman aktif, baru cek status login
+        window.firebase.auth().onAuthStateChanged((u) => {
+          user = u;
+          if(user) muatMasterData(); // Kalau login berhasil, langsung ambil data
+          
+          setTimeout(() => {
+            if(window.lucide) window.lucide.createIcons();
+          }, 100);
+        });
+      })
+      .catch((error) => {
+        console.error("Gagal mengaktifkan gembok sesi Firebase:", error);
+      });
   });
 
   // Fungsi ambil data dari Google Sheets (Database Mas)
