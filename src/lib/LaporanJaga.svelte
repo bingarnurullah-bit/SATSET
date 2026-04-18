@@ -29,6 +29,8 @@
   let obatInput = "";
   let qtyInput = 1;
   let listJaga = []; // Keranjang obat pasien
+  let showDropdown = false;
+  $: filteredObat = obatInput ? activeObatList.filter(o => o.toLowerCase().includes(obatInput.toLowerCase())) : [];
   
   // Master Data Obat
   let jagaObatUmum = [];
