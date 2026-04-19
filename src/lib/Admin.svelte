@@ -164,15 +164,6 @@
     filterSelesai = `${y}-${m}-${d}`;
   }
 
-  function setFilterHariIni() {
-    const date = new Date();
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    filterMulai = `${y}-${m}-${d}`;
-    filterSelesai = `${y}-${m}-${d}`;
-  }
-
   function resetFilter() { filterMulai = ""; filterSelesai = ""; }
 
   function downloadPDF() { window.print(); }
@@ -193,17 +184,76 @@
   async function hapusObat(id) { if(confirm("Yakin hapus?")) { await supabase.from('master_obat').delete().eq('id', id); muatSemuaData(); } }
 
   // ==========================
-  // FUNGSI CRUD STOK JAGA (BARU)
+  // FUNGSI CRUD STOK JAGA DENGAN STELING (BARU & DIPERKUAT)
   // ==========================
   async function simpanStokJaga() {
     if (!formStokJaga.nama || formStokJaga.jumlah === "") return alert("Isi nama obat dan jumlahnya!");
     try {
-      const payload = { nama: formStokJaga.nama.toUpperCase(), jumlah: Number(formStokJaga.jumlah) || 0 };
-      if (editIdStokJaga) await supabase.from('stok_obat_jaga').update(payload).eq('id', editIdStokJaga);
-      else await supabase.from('stok_obat_jaga').insert([payload]);
-      formStokJaga = { nama: "", jumlah: "" }; editIdStokJaga = null; muatSemuaData(); 
-    } catch (err) { alert("Error: " + err.message); }
+      const namaObatClean = formStokJaga.nama.trim().toUpperCase();
+      const jumlahInput = Number(formStokJaga.jumlah) || 0;
+      let qtyMasuk = 0;
+      let totalStokAkhir = 0;
+      let ketLog = "";
+
+      if (editIdStokJaga) {
+        // Mode Edit/Update Jumlah
+        const dataLama = daftarStokJaga.find(o => o.id === editIdStokJaga);
+        
+        if (dataLama) {
+          if (jumlahInput > dataLama.jumlah) {
+             // Jika jumlah ditambah (Restock)
+             qtyMasuk = jumlahInput - dataLama.jumlah;
+             totalStokAkhir = jumlahInput;
+             ketLog = `Penambahan/Restock oleh Admin (${userEmail})`;
+          } else if (jumlahInput < dataLama.jumlah) {
+             // Jika jumlah dikurangi (Koreksi Admin)
+             const qtyKeluar = dataLama.jumlah - jumlahInput;
+             totalStokAkhir = jumlahInput;
+             ketLog = `Koreksi pengurangan oleh Admin (${userEmail})`;
+             
+             // Karena update stok, kita tetap mencatatnya
+             await supabase.from('log_steling_obat').insert({
+                nama_obat: namaObatClean,
+                jenis_mutasi: 'KELUAR', // Koreksi terhitung keluar
+                jumlah: qtyKeluar,
+                sisa_stok: totalStokAkhir,
+                keterangan: ketLog
+             });
+          }
+        }
+        
+        await supabase.from('stok_obat_jaga').update({ nama: namaObatClean, jumlah: jumlahInput }).eq('id', editIdStokJaga);
+
+      } else {
+        // Mode Tambah Obat Baru ke Rak Jaga
+        qtyMasuk = jumlahInput;
+        totalStokAkhir = jumlahInput;
+        ketLog = `Input obat baru ke Laci Jaga oleh (${userEmail})`;
+        await supabase.from('stok_obat_jaga').insert([{ nama: namaObatClean, jumlah: jumlahInput }]);
+      }
+
+      // CATAT KE BUKU STELING JIKA ADA OBAT MASUK
+      if (qtyMasuk > 0) {
+        await supabase.from('log_steling_obat').insert({
+          nama_obat: namaObatClean,
+          jenis_mutasi: 'MASUK',
+          jumlah: qtyMasuk,
+          sisa_stok: totalStokAkhir,
+          keterangan: ketLog
+        });
+      }
+
+      formStokJaga = { nama: "", jumlah: "" }; 
+      editIdStokJaga = null; 
+      muatSemuaData(); 
+      
+      alert("Stok berhasil disimpan dan terekam di Steling! 📦✅");
+
+    } catch (err) { 
+      alert("Error saat menyimpan stok: " + err.message); 
+    }
   }
+
   function siapkanEditStokJaga(o) { formStokJaga = { nama: o.nama, jumlah: o.jumlah || 0 }; editIdStokJaga = o.id; window.scrollTo({ top: 0, behavior: 'smooth' }); }
   async function hapusStokJaga(id) { if(confirm("Yakin hapus obat dari Laporan Jaga?")) { await supabase.from('stok_obat_jaga').delete().eq('id', id); muatSemuaData(); } }
 
@@ -292,7 +342,7 @@
             <div class="px-4 py-2 mt-6 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-800 mb-2">Kelompok Laporan Jaga</div>
             <li>
               <button on:click={() => tabAktif = 'stok_jaga'} class="w-full flex items-center px-4 py-3 rounded-xl font-bold text-sm transition-colors {tabAktif === 'stok_jaga' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}">
-                <span class="material-icons mr-3 text-lg">medication</span> Stok Obat
+                <span class="material-icons mr-3 text-lg">medication</span> Stok Obat Jaga
               </button>
             </li>
           {/if}
@@ -391,7 +441,7 @@
                 <input type="text" bind:value={formObat.nama} class="w-full p-3 border-2 border-blue-200 rounded-xl font-bold uppercase outline-none focus:border-blue-500" placeholder="Contoh: AMOXICILLIN 500MG">
               </div>
               <div class="w-32">
-                <label class="block text-xs font-bold text-blue-800 uppercase mb-1">Stok Fisik</label>
+                <label class="block text-xs font-bold text-blue-800 uppercase mb-1">Stok Gudang</label>
                 <input type="number" bind:value={formObat.stok} class="w-full p-3 border-2 border-blue-200 rounded-xl font-bold outline-none focus:border-blue-500 text-center text-blue-700 bg-white" placeholder="0">
               </div>
               <div class="w-48">
@@ -488,14 +538,14 @@
 
         {#if tabAktif === 'stok_jaga'}
           <div class="animate-fade-in">
-            <h2 class="text-2xl font-black text-slate-800 mb-6 border-b-2 pb-2">Stok Obat Laporan Jaga</h2>
+            <h2 class="text-2xl font-black text-slate-800 mb-6 border-b-2 pb-2">Manajemen Stok Obat Jaga</h2>
             <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-4 items-end bg-gradient-to-r from-emerald-50 to-white">
               <div class="flex-1">
                 <label class="block text-xs font-bold text-emerald-800 uppercase mb-1">Nama Obat / BMHP</label>
-                <input type="text" bind:value={formStokJaga.nama} class="w-full p-3 border-2 border-emerald-200 rounded-xl font-bold uppercase outline-none focus:border-emerald-500" placeholder="Contoh: PARACETAMOL">
+                <input type="text" bind:value={formStokJaga.nama} class="w-full p-3 border-2 border-emerald-200 rounded-xl font-bold uppercase outline-none focus:border-emerald-500" placeholder="Contoh: PARACETAMOL 500MG">
               </div>
               <div class="w-48">
-                <label class="block text-xs font-bold text-emerald-800 uppercase mb-1">Jumlah Obat</label>
+                <label class="block text-xs font-bold text-emerald-800 uppercase mb-1">Jumlah Disimpan</label>
                 <input type="number" bind:value={formStokJaga.jumlah} class="w-full p-3 border-2 border-emerald-200 rounded-xl font-bold outline-none focus:border-emerald-500 text-center text-emerald-700 bg-white" placeholder="0">
               </div>
               <button on:click={simpanStokJaga} class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold p-3 px-6 rounded-xl shadow-md transition-colors h-12 flex items-center justify-center">
@@ -513,7 +563,7 @@
               </div>
               <table class="w-full text-sm text-left">
                 <thead class="bg-slate-800 text-white">
-                  <tr><th class="p-4 w-12 text-center">No</th><th class="p-4">Nama Barang</th><th class="p-4 text-center w-32">Jumlah</th><th class="p-4 text-center w-32">Aksi</th></tr>
+                  <tr><th class="p-4 w-12 text-center">No</th><th class="p-4">Nama Barang</th><th class="p-4 text-center w-32">Stok Saat Ini</th><th class="p-4 text-center w-32">Aksi</th></tr>
                 </thead>
                 <tbody>
                   {#if filteredStokJaga.length === 0}
@@ -552,7 +602,6 @@
     .print-area { width: 100% !important; max-width: none !important; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; }
     .print-header { display: block !important; text-align: center; margin-bottom: 20px; border-bottom: 2px solid black; padding-bottom: 10px;}
     
-    /* Paksa tabel agar mengikuti format cetak hitam putih/warna bersih */
     .print-table th { background-color: #f1f5f9 !important; color: black !important; font-weight: bold !important; border: 1px solid black !important; }
     .print-table td { border: 1px solid black !important; color: black !important; }
     
