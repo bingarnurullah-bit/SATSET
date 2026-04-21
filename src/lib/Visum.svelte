@@ -9,9 +9,8 @@
   let userEmail = "";
   let isKapus = false;
   
-  // State Modal Otorisasi
   let showApprovalModal = false;
-  let showUnlockModal = false; // Modal baru untuk buka kunci edit
+  let showUnlockModal = false; 
   let approvalPassword = "";
   let unlockPassword = "";
   let visumTarget = null;
@@ -43,8 +42,56 @@
     hasil_luar: "",
     kepala: "", dahi: "", pipi: "", mata: "", hidung: "", bibir: "", gigi: "", mulut: "", telinga: "", rahang: "", dagu: "", leher: "",
     dada: "", perut: "", tangan: "", punggung: "", pinggang: "", pinggul: "", kemaluan: "", kaki: "",
-    kesimpulan: "", tgl_buat: "", status_approval: false
+    kesimpulan: "", tgl_buat: "", status_approval: false, 
+    foto_bukti: [] // STATE BARU UNTUK MENYIMPAN FOTO BUKTI
   };
+
+  // ==========================
+  // FUNGSI KOMPRESI & UPLOAD FOTO
+  // ==========================
+  function handleFileUpload(event) {
+    const files = event.target.files;
+    if (!files) return;
+    
+    // Pastikan array foto_bukti sudah ada
+    if (!form.foto_bukti) form.foto_bukti = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          // Kompresi Gambar menggunakan Canvas agar Database tidak penuh
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800; // Lebar maksimal gambar di PDF
+          let scaleSize = 1;
+          
+          if (img.width > MAX_WIDTH) {
+            scaleSize = MAX_WIDTH / img.width;
+          }
+          
+          canvas.width = img.width * scaleSize;
+          canvas.height = img.height * scaleSize;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          
+          // Ubah ke format JPEG dengan kualitas 70%
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7); 
+          
+          form.foto_bukti = [...form.foto_bukti, dataUrl];
+        }
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function hapusFoto(index) {
+    form.foto_bukti = form.foto_bukti.filter((_, i) => i !== index);
+  }
 
   // ==========================
   // FUNGSI DATABASE
@@ -53,11 +100,14 @@
     if (!form.nama_korban) return alert("Isi Nama Korban terlebih dahulu!");
     isSaving = true;
     try {
+      // Pastikan foto_bukti diset sebagai array kosong jika tidak ada foto
+      const payloadToSave = { ...form, foto_bukti: form.foto_bukti || [] };
+
       if (editRow) {
-        const { error } = await supabase.from('laporan_visum').update({...form}).eq('id', editRow);
+        const { error } = await supabase.from('laporan_visum').update(payloadToSave).eq('id', editRow);
         if (error) throw error; alert("Draft Visum berhasil diupdate.");
       } else {
-        const { error } = await supabase.from('laporan_visum').insert([{...form}]);
+        const { error } = await supabase.from('laporan_visum').insert([payloadToSave]);
         if (error) throw error; alert("Draft Visum berhasil disimpan.");
         batalEditVisum();
       }
@@ -77,22 +127,25 @@
 
   function editDataVisum(data) {
     if (data.status_approval) {
-      // Jika sudah disetujui, cegat dan minta password Kapus
       visumTarget = data;
       unlockPassword = "";
       loginErrorMsg = "";
       showUnlockModal = true;
       return;
     }
-    // Jika belum disetujui, langsung buka form
     editRow = data.id; 
-    form = { ...data };
+    // Pastikan memuat array foto jika ada, jika tidak, set array kosong
+    form = { ...data, foto_bukti: data.foto_bukti || [] };
     pindahHalaman('form');
   }
 
   function batalEditVisum() {
     editRow = ""; 
-    Object.keys(form).forEach(key => form[key] = (key === 'status_approval') ? false : "");
+    Object.keys(form).forEach(key => {
+      if (key === 'status_approval') form[key] = false;
+      else if (key === 'foto_bukti') form[key] = [];
+      else form[key] = "";
+    });
   }
 
   async function hapusVisum(id) {
@@ -109,7 +162,7 @@
   }
 
   // ==========================
-  // SISTEM APPROVAL & UNLOCK (VIA SUPABASE AUTH)
+  // SISTEM APPROVAL & UNLOCK
   // ==========================
   function bukaModalApproval(visum) {
     visumTarget = visum;
@@ -144,10 +197,9 @@
       const { data, error: authError } = await supabase.auth.signInWithPassword({ email: 'kapus@satsetponcokusumo.com', password: unlockPassword });
       if (authError) throw new Error("Password Kepala Puskesmas Salah!");
 
-      // Jika password benar, buka form edit untuk dokumen ini
       showUnlockModal = false;
       editRow = visumTarget.id; 
-      form = { ...visumTarget };
+      form = { ...visumTarget, foto_bukti: visumTarget.foto_bukti || [] };
       alert("Akses Bypass Kapus Berhasil. Dokumen dapat diedit.");
       pindahHalaman('form');
     } catch (err) { loginErrorMsg = err.message; } 
@@ -155,11 +207,11 @@
   }
 
   // ==========================
-  // METODE CETAK 
+  // METODE CETAK (PDF)
   // ==========================
   function cetakVisum(dataVisum) {
     if (!dataVisum.status_approval) return alert("❌ DITOLAK: Visum belum disetujui.");
-    form = { ...dataVisum }; 
+    form = { ...dataVisum, foto_bukti: dataVisum.foto_bukti || [] }; 
 
     setTimeout(() => {
       const printContent = document.getElementById('print-layer').innerHTML;
@@ -175,11 +227,12 @@
         <head>
           <title>VISUM_${form.nama_korban || 'Korban'}</title>
           <style>
-            @page { size: A4; margin: 25mm 20mm 20mm 25mm; }
+            /* MARGIN ATAS DIKECILKAN JADI 10mm AGAR KOP NAIK */
+            @page { size: A4; margin: 10mm 20mm 20mm 20mm; }
             body { font-family: 'Times New Roman', Times, serif; background: white; color: black; font-size: 12pt; line-height: 1.5; word-wrap: break-word; overflow-wrap: break-word; }
             magical-app, grammarly-extension, div[id^="magical"] { display: none !important; }
             
-            .kop-surat { text-align: center; border-bottom: 3px solid black; padding-bottom: 8px; margin-bottom: 15px; position: relative; }
+            .kop-surat { text-align: center; margin-bottom: 15px; position: relative; }
             .kop-logo { position: absolute; left: 0; top: 0; width: 75px; }
             .kop-judul { font-size: 16pt; font-weight: bold; margin: 0; letter-spacing: 1px; }
             .kop-teks { font-size: 11pt; margin: 2px 0; }
@@ -196,11 +249,15 @@
             h4 { font-size: 12pt; text-decoration: underline; margin-top: 20px; margin-bottom: 10px; font-weight: bold; }
             table { page-break-inside: auto; border-collapse: collapse; }
             tr { page-break-inside: avoid; page-break-after: auto; }
-            .box-ttd { width: 100%; margin-top: 40px; text-align: center; table-layout: fixed; }
-            .box-ttd td { vertical-align: bottom; }
+            
+            /* CLASS BARU UNTUK LAMPIRAN HALAMAN BARU */
+            .page-break { page-break-before: always; }
+            .foto-grid { text-align: center; margin-top: 20px; }
+            .foto-item { display: inline-block; width: 45%; margin: 10px; border: 1px solid #000; padding: 5px; box-sizing: border-box; }
+            .foto-item img { width: 100%; height: auto; max-height: 350px; object-fit: contain; }
           </style>
         </head>
-        <body onload="setTimeout(function(){ window.print(); window.parent.postMessage('printVisumSelesai', '*'); }, 800)">
+        <body onload="setTimeout(function(){ window.print(); window.parent.postMessage('printVisumSelesai', '*'); }, 1000)">
           ${printContent}
         </body>
         </html>
@@ -259,6 +316,7 @@
   </div>
 {/if}
 
+
 <div class="bg-slate-50 min-h-screen pt-4 pb-20 relative">
   <div class="max-w-6xl mx-auto px-4 mb-6 flex flex-wrap gap-4 justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
     <button on:click={() => switchView('dashboard')} class="text-purple-500 font-bold text-sm flex items-center hover:text-black transition">
@@ -273,12 +331,16 @@
   {#if activePage === 'form'}
   <div class="max-w-5xl mx-auto bg-white p-6 md:p-12 shadow-xl rounded-sm border-t-8 border-blue-600 animate-fade-in">
     
-    <div class="text-center border-b-4 border-black pb-4 mb-6 relative">
+    <div class="text-center pb-4 mb-6 relative">
       <img src="/logo-kab.png" alt="Logo Kab Malang" class="absolute left-0 top-0 w-16 md:w-20">
       <h2 class="text-xl md:text-2xl font-black m-0 uppercase text-slate-800 tracking-wider">PEMERINTAH KABUPATEN MALANG</h2>
       <h2 class="text-xl md:text-2xl font-black m-0 uppercase tracking-wider">DINAS KESEHATAN</h2>
       <h1 class="text-2xl md:text-3xl font-black m-0 uppercase tracking-widest mt-1">UPT Puskesmas Poncokusumo</h1>
-      <p class="text-xs md:text-sm m-0 italic mt-2 text-slate-600">Jl. Kusnan Marzuki No. 101, Wonomulyo. Telp: (0341) 787792 | Email: pkmponcokusumo@gmail.com</p>
+      <div class="text-center mt-2 pt-2 text-slate-700">
+        <p class="text-[10px] md:text-xs leading-relaxed m-0 font-medium">Jalan Kusnan Marzuki No. 101, Wonomulyo, Kabupaten Malang, Jawa Timur</p>
+        <p class="text-[10px] md:text-xs leading-relaxed m-0">Telpon/ Faksimile <span class="font-semibold">(0341) 2319509</span> | Laman: <span class="italic text-black-700">puskesmasponcokusumo.malangkab.go.id</span></p>
+        <p class="text-[10px] md:text-xs leading-relaxed m-0 font-medium">Pos-el: <span class="italic font-semibold">pkmponcokusumo@gmail.com</span>, Kode Pos: 65157</p>
+      </div>
     </div>
 
     <div class="flex justify-between items-start mb-6">
@@ -344,22 +406,50 @@
 
       <p class="text-justify mt-4">Demikian Visum et Repertum hidup ini dibuat dengan mengingat sumpah jabatan dan dapat dipertanggungjawabkan kebenarannya.</p>
 
-      <div class="flex justify-between mt-12 mb-8">
-        <div class="text-center w-64">
+      <div class="flex justify-between mt-12 mb-8 flex-col md:flex-row gap-8">
+        
+        <div class="text-left w-full md:w-64">
           <p>Mengetahui,</p>
-          <p class="font-bold">Kepala UPT Puskesmas Poncokusumo</p>
-          <br><br><br>
-          <p class="font-bold underline">dr. Wiwit Wijayati</p>
-          <p>NIP. 197501242006042015</p>
+          <p>Kepala UPT Puskesmas Poncokusumo,</p>
+          <br><br><br><br>
+          <p class="font-bold">dr. Wiwit Wijayati</p>
+          <p>NIP. 19750124 200604 2 015</p>
         </div>
-        <div class="text-center w-64">
-          <p>Poncokusumo, <input type="date" bind:value={form.tgl_buat} class="border-b border-dashed border-slate-400 outline-none text-center w-[130px]"></p>
-          <p class="font-bold">Dokter Pemeriksa</p>
+
+        <div class="text-left w-full md:w-64">
+          <p>Dikeluarkan di Poncokusumo</p>
+          <p>Pada Tanggal, <input type="date" bind:value={form.tgl_buat} class="border-b border-dashed border-slate-400 outline-none w-[130px]"></p>
+          <p>Dokter Pemeriksa,</p>
           <br><br><br>
-          <p class="font-bold">dr. <input type="text" bind:value={form.nama_dokter} placeholder="Nama Dokter" class="border-b border-dashed border-slate-400 outline-none text-center font-bold w-3/4"></p>
-          <p>NIP. <input type="text" bind:value={form.nip_dokter} placeholder="NIP Dokter" class="border-b border-dashed border-slate-400 outline-none text-center w-3/4"></p>
+          <p class="font-bold">dr. <input type="text" bind:value={form.nama_dokter} placeholder="Nama Dokter" class="border-b border-dashed border-slate-400 outline-none font-bold w-3/4"></p>
+          <p>NIP. <input type="text" bind:value={form.nip_dokter} placeholder="NIP Dokter" class="border-b border-dashed border-slate-400 outline-none w-3/4"></p>
         </div>
+        
       </div>
+
+      <div class="mt-12 border-t-2 border-dashed border-slate-300 pt-8">
+        <h3 class="font-black text-lg mb-2 text-slate-800 flex items-center">
+          <span class="material-icons mr-2 text-blue-600">add_a_photo</span> Lampiran Bukti Foto (Opsional)
+        </h3>
+        <p class="text-xs text-slate-500 mb-4">Unggah foto luka/korban. Foto akan dikompresi otomatis dan dicetak di halaman terpisah (Lampiran).</p>
+        
+        <input type="file" multiple accept="image/*" on:change={handleFileUpload} 
+               class="mb-6 block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 cursor-pointer"/>
+        
+        {#if form.foto_bukti && form.foto_bukti.length > 0}
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            {#each form.foto_bukti as foto, i}
+              <div class="relative group">
+                <img src={foto} alt="Bukti Visum" class="w-full h-32 md:h-40 object-cover rounded-xl border-2 border-slate-200 shadow-sm">
+                <button on:click={() => hapusFoto(i)} class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1.5 shadow hover:bg-red-600 transition opacity-90 hover:opacity-100" title="Hapus Foto">
+                  <span class="material-icons text-sm block">close</span>
+                </button>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+
     </div>
 
     <div class="bg-slate-100 p-4 rounded-xl flex justify-center gap-4 mt-8 border border-slate-300">
@@ -372,7 +462,6 @@
     </div>
   </div>
   {/if}
-
 
   {#if activePage === 'riwayat'}
   <div class="max-w-6xl mx-auto bg-white p-4 md:p-8 rounded-2xl shadow-xl border border-slate-200 animate-fade-in mx-2 md:mx-auto">
@@ -448,17 +537,20 @@
     {/if}
   </div>
   {/if}
-
 </div>
 
 <div id="print-layer" style="display: none;">
-  <div class="kop-surat">
-    <img src="/logo-kab.png" class="kop-logo" alt="Logo">
-    <h2 class="kop-judul uppercase" style="color: black; letter-spacing: 1px;">PEMERINTAH KABUPATEN MALANG</h2>
-    <h2 class="kop-judul uppercase">DINAS KESEHATAN</h2>
-    <h2 class="kop-judul uppercase" style="font-size: 18pt;">UPT PUSKESMAS PONCOKUSUMO</h2>
-    <p class="kop-teks italic">Jl. Kusnan Marzuki No. 101, Wonomulyo. Telp: (0341) 787792</p>
-    <p class="kop-teks italic">Email: pkmponcokusumo@gmail.com | PONCOKUSUMO – 65157</p>
+  <div class="kop-surat" style="text-align: center; margin-bottom: 15px; position: relative;">
+    <img src="/logo-kab.png" class="kop-logo" alt="Logo" style="position: absolute; left: 0; top: 0; width: 75px;">
+    <h2 class="kop-judul uppercase" style="color: black; letter-spacing: 1px; font-size: 16pt; font-weight: bold; margin: 0;">PEMERINTAH KABUPATEN MALANG</h2>
+    <h2 class="kop-judul uppercase" style="font-size: 16pt; font-weight: bold; margin: 0;">DINAS KESEHATAN</h2>
+    <h2 class="kop-judul uppercase" style="font-size: 18pt; font-weight: bold; margin: 0;">UPT PUSKESMAS PONCOKUSUMO</h2>
+    
+    <div style="text-align: center; margin-top: 5px; color: black;">
+      <p style="font-size: 11pt; margin: 0; font-weight: 500;">Jalan Kusnan Marzuki No. 101, Wonomulyo, Kabupaten Malang, Jawa Timur</p>
+      <p style="font-size: 11pt; margin: 0;">Telpon/ Faksimile <span style="font-weight: bold;">(0341) 2319509</span> | Laman: <span style="font-style: italic; color: black;">puskesmasponcokusumo.malangkab.go.id</span></p>
+      <p style="font-size: 11pt; margin: 0; font-weight: 500;">Pos-el: <span style="font-style: italic; font-weight: bold;">pkmponcokusumo@gmail.com</span>, Kode Pos: 65157</p>
+    </div>
   </div>
 
   <table style="width: 100%; margin-bottom: 20px;">
@@ -538,28 +630,72 @@
     Demikian Visum et Repertum hidup ini dibuat dengan mengingat sumpah jabatan dan dapat dipertanggungjawabkan kebenarannya.
   </p>
 
-  <table class="box-ttd">
+  <table style="width: 100%; margin-top: 40px; border: none; table-layout: fixed;">
     <tbody>
       <tr>
-        <td style="width: 50%;">
-          <p style="margin:0;">Mengetahui</p>
-          <p style="margin:0; font-weight: bold;">Kepala UPT Puskesmas Poncokusumo</p>
-          <br><br><br><br>
-          <p style="margin:0; font-weight: bold; text-decoration: underline;">dr. Wiwit Wijayati</p>
-          <p style="margin:0;">NIP. 197501242006042015</p>
+        <td style="width: 50%; vertical-align: top; text-align: center;">
+          <div style="display: inline-block; text-align: left;">
+            <p style="margin:0;">Mengetahui,</p>
+            <p style="margin:0;">Kepala UPT Puskesmas Poncokusumo,</p>
+            <br><br><br><br>
+            <p style="margin:0; font-weight: bold;">dr. Wiwit Wijayati</p>
+            <p style="margin:0;">NIP. 19750124 200604 2 015</p>
+          </div>
         </td>
-        <td style="width: 50%;">
-          <p style="margin:0;">Poncokusumo, {form.tgl_buat}</p>
-          <p style="margin:0; font-weight: bold;">Dokter Pemeriksa</p>
-          <br><br><br><br>
-          <p style="margin:0; font-weight: bold; text-decoration: underline;">
-            dr. {form.nama_dokter || '............................'}
-          </p>
-          <p style="margin:0;">NIP. {form.nip_dokter || '............................'}</p>
+        
+        <td style="width: 50%; vertical-align: top; text-align: center;">
+          <div style="display: inline-block; text-align: left;">
+            <p style="margin:0;">Dikeluarkan di Poncokusumo</p>
+            <p style="margin:0;">Pada Tanggal, {form.tgl_buat}</p>
+            <p style="margin:0;">Dokter Pemeriksa,</p>
+            <br><br><br><br>
+            <p style="margin:0; font-weight: bold;">dr. {form.nama_dokter || '............................'}</p>
+            <p style="margin:0;">NIP. {form.nip_dokter || '............................'}</p>
+          </div>
         </td>
       </tr>
     </tbody>
   </table>
+
+  {#if form.foto_bukti && form.foto_bukti.length > 0}
+    <div class="page-break"></div>
+
+    <div class="kop-surat" style="text-align: center; margin-bottom: 15px; position: relative;">
+      <img src="/logo-kab.png" class="kop-logo" alt="Logo" style="position: absolute; left: 0; top: 0; width: 75px;">
+      <h2 class="kop-judul uppercase" style="color: black; letter-spacing: 1px; font-size: 16pt; font-weight: bold; margin: 0;">PEMERINTAH KABUPATEN MALANG</h2>
+      <h2 class="kop-judul uppercase" style="font-size: 16pt; font-weight: bold; margin: 0;">DINAS KESEHATAN</h2>
+      <h2 class="kop-judul uppercase" style="font-size: 18pt; font-weight: bold; margin: 0;">UPT PUSKESMAS PONCOKUSUMO</h2>
+      
+      <div style="text-align: center; margin-top: 5px; color: black;">
+        <p style="font-size: 11pt; margin: 0; font-weight: 500;">Jalan Kusnan Marzuki No. 101, Wonomulyo, Kabupaten Malang, Jawa Timur</p>
+        <p style="font-size: 11pt; margin: 0;">Telpon/ Faksimile <span style="font-weight: bold;">(0341) 2319509</span> | Laman: <span style="font-style: italic; color: black;">puskesmasponcokusumo.malangkab.go.id</span></p>
+        <p style="font-size: 11pt; margin: 0; font-weight: 500;">Pos-el: <span style="font-style: italic; font-weight: bold;">pkmponcokusumo@gmail.com</span>, Kode Pos: 65157</p>
+      </div>
+    </div>
+
+    <h3 style="text-align: center; text-decoration: underline; margin-top: 30px; font-size: 14pt;">LAMPIRAN DOKUMENTASI VISUM</h3>
+    <table style="width: 100%; margin-bottom: 20px; font-size: 12pt;">
+      <tbody>
+        <tr>
+          <td style="width: 50%; text-align: right; padding-right: 10px;">Atas Nama Korban:</td>
+          <td style="font-weight: bold; text-transform: uppercase;">{form.nama_korban}</td>
+        </tr>
+        <tr>
+          <td style="text-align: right; padding-right: 10px;">Berdasarkan Surat Permintaan No:</td>
+          <td style="font-weight: bold;">{form.no_surat}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="foto-grid">
+      {#each form.foto_bukti as foto}
+        <div class="foto-item">
+          <img src="{foto}" alt="Bukti Foto">
+        </div>
+      {/each}
+    </div>
+  {/if}
+
 </div>
 
 <style>
@@ -570,112 +706,35 @@
      🚀 OPTIMASI UI/UX FORM VISUM KHUSUS MOBILE
      ========================================== */
   @media screen and (max-width: 768px) {
-    /* 1. Perbaikan Header & Logo (Agar logo tidak menabrak teks) */
-    .max-w-5xl.mx-auto > .text-center.relative {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding-top: 10px;
-    }
-    .max-w-5xl.mx-auto img[alt="Logo Kab Malang"] {
-      position: static !important; /* Mematikan absolute */
-      width: 70px !important;
-      margin-bottom: 15px;
-    }
+    .max-w-5xl.mx-auto > .text-center.relative { display: flex; flex-direction: column; align-items: center; padding-top: 10px; }
+    .max-w-5xl.mx-auto img[alt="Logo Kab Malang"] { position: static !important; width: 70px !important; margin-bottom: 15px; }
     h1.text-3xl { font-size: 1.5rem !important; line-height: 1.2; margin-bottom: 5px; }
     h2.text-2xl { font-size: 1.1rem !important; }
 
-    /* 2. Pro Justitia & Kotak Visum (Susun Atas-Bawah) */
-    .flex.justify-between.items-start.mb-6 {
-      flex-direction: column-reverse;
-      gap: 15px;
-    }
-    .flex.justify-between.items-start.mb-6 > .text-right {
-      text-align: left;
-      width: 100%;
-    }
+    .flex.justify-between.items-start.mb-6 { flex-direction: column-reverse; gap: 15px; }
+    .flex.justify-between.items-start.mb-6 > .text-right { text-align: left; width: 100%; }
     .flex.justify-between.items-start.mb-6 h2 { width: 100%; text-align: center; }
 
-    /* 3. Input Paragraf (Narasi Pembuka) Anti-Zoom iOS */
-    input[type="date"], input[type="time"], input[type="text"], textarea, select {
-      font-size: 16px !important; /* WAJIB: Mencegah Auto-Zoom di iPhone/iPad */
-    }
-    p.leading-relaxed input {
-      padding: 4px 8px;
-      background: #f8fafc;
-      border: 1px solid #cbd5e1 !important;
-      border-radius: 6px;
-      margin: 2px 0;
-    }
+    input[type="date"], input[type="time"], input[type="text"], textarea, select { font-size: 16px !important; }
+    p.leading-relaxed input { padding: 4px 8px; background: #f8fafc; border: 1px solid #cbd5e1 !important; border-radius: 6px; margin: 2px 0; }
 
-    /* 4. Tabel Identitas Korban (Dibuat menyusun ke bawah/Stacking) */
     table.w-full.ml-8 { margin-left: 0 !important; }
-    table.w-full.ml-8 td { 
-      display: block; 
-      width: 100% !important; 
-      padding: 2px 0; 
-    }
-    table.w-full.ml-8 tr { 
-      display: block; 
-      margin-bottom: 12px; 
-      border-bottom: 1px dashed #e2e8f0; 
-      padding-bottom: 8px;
-    }
-    table.w-full.ml-8 input, table.w-full.ml-8 select {
-      width: 100% !important;
-      background: #f8fafc;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      padding: 10px;
-      margin-top: 6px;
-    }
+    table.w-full.ml-8 td { display: block; width: 100% !important; padding: 2px 0; }
+    table.w-full.ml-8 tr { display: block; margin-bottom: 12px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 8px; }
+    table.w-full.ml-8 input, table.w-full.ml-8 select { width: 100% !important; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; margin-top: 6px; }
 
-    /* 5. Tanda Vital & Pemeriksaan Luar (Ubah Grid 2 Kolom jadi 1 Kolom) */
-    .grid.grid-cols-2 {
-      grid-template-columns: 1fr !important;
-      gap: 12px !important;
-      margin-left: 0 !important;
-    }
-    
-    /* Layout Label -> Input agar nyaman disentuh */
-    .grid div {
-      display: flex;
-      flex-direction: column;
-      font-size: 14px;
-      color: #334155;
-    }
-    .grid div input {
-      width: 100% !important;
-      padding: 10px !important;
-      border: 1px solid #cbd5e1 !important;
-      border-radius: 8px;
-      background: #f8fafc;
-      margin-top: 4px;
-      margin-left: 0 !important;
-    }
+    .grid.grid-cols-2 { grid-template-columns: 1fr !important; gap: 12px !important; margin-left: 0 !important; }
+    .grid div { display: flex; flex-direction: column; font-size: 14px; color: #334155; }
+    .grid div input { width: 100% !important; padding: 10px !important; border: 1px solid #cbd5e1 !important; border-radius: 8px; background: #f8fafc; margin-top: 4px; margin-left: 0 !important; }
 
-    /* Perbaikan Khusus Organ (Kepala, Mata, dll) */
     .flex.items-center span.w-24 { width: 100% !important; margin-bottom: 4px; font-weight: 700; color: #0f172a;}
     .flex.items-center { flex-direction: column; align-items: flex-start; }
 
-    /* 6. Kotak Tanda Tangan Dokter & Kapus */
-    .flex.justify-between.mt-12.mb-8 {
-      flex-direction: column;
-      gap: 40px;
-      align-items: center;
-    }
+    .flex.justify-between.mt-12.mb-8 { flex-direction: column; gap: 40px; align-items: center; }
     .w-64 { width: 100% !important; }
     .w-64 input { background: #f8fafc; border: 1px solid #cbd5e1 !important; padding: 5px; border-radius: 6px;}
 
-    /* 7. Tombol Aksi Simpan & Batal Bawah (Full Width) */
-    .bg-slate-100.p-4.rounded-xl.flex {
-      flex-direction: column;
-      gap: 10px;
-    }
-    .bg-slate-100.p-4.rounded-xl.flex button {
-      width: 100%;
-      justify-content: center;
-      padding: 14px 0;
-    }
+    .bg-slate-100.p-4.rounded-xl.flex { flex-direction: column; gap: 10px; }
+    .bg-slate-100.p-4.rounded-xl.flex button { width: 100%; justify-content: center; padding: 14px 0; }
   }
 </style>
