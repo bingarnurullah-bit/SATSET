@@ -134,7 +134,6 @@
       return;
     }
     editRow = data.id; 
-    // Pastikan memuat array foto jika ada, jika tidak, set array kosong
     form = { ...data, foto_bukti: data.foto_bukti || [] };
     pindahHalaman('form');
   }
@@ -316,7 +315,6 @@
   </div>
 {/if}
 
-
 <div class="bg-slate-50 min-h-screen pt-4 pb-20 relative">
   <div class="max-w-6xl mx-auto px-4 mb-6 flex flex-wrap gap-4 justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
     <button on:click={() => switchView('dashboard')} class="text-purple-500 font-bold text-sm flex items-center hover:text-black transition">
@@ -407,7 +405,6 @@
       <p class="text-justify mt-4">Demikian Visum et Repertum hidup ini dibuat dengan mengingat sumpah jabatan dan dapat dipertanggungjawabkan kebenarannya.</p>
 
       <div class="flex justify-between mt-12 mb-8 flex-col md:flex-row gap-8">
-        
         <div class="text-left w-full md:w-64">
           <p>Mengetahui,</p>
           <p>Kepala UPT Puskesmas Poncokusumo,</p>
@@ -424,7 +421,6 @@
           <p class="font-bold">dr. <input type="text" bind:value={form.nama_dokter} placeholder="Nama Dokter" class="border-b border-dashed border-slate-400 outline-none font-bold w-3/4"></p>
           <p>NIP. <input type="text" bind:value={form.nip_dokter} placeholder="NIP Dokter" class="border-b border-dashed border-slate-400 outline-none w-3/4"></p>
         </div>
-        
       </div>
 
       <div class="mt-12 border-t-2 border-dashed border-slate-300 pt-8">
@@ -548,8 +544,8 @@
     
     <div style="text-align: center; margin-top: 5px; color: black;">
       <p style="font-size: 11pt; margin: 0; font-weight: 500;">Jalan Kusnan Marzuki No. 101, Wonomulyo, Kabupaten Malang, Jawa Timur</p>
-      <p style="font-size: 11pt; margin: 0;">Telpon/ Faksimile <span style="font-weight: bold;">(0341) 2319509</span> | Laman: <span style="font-style: italic; color: black;">puskesmasponcokusumo.malangkab.go.id</span></p>
-      <p style="font-size: 11pt; margin: 0; font-weight: 500;">Pos-el: <span style="font-style: italic; font-weight: bold;">pkmponcokusumo@gmail.com</span>, Kode Pos: 65157</p>
+      <p style="font-size: 11pt; margin: 0;">Telpon/ Faksimile <span style="font-weight: 500;">(0341) 2319509</span> | Laman: <span style="font-style: italic; color: black;">puskesmasponcokusumo.malangkab.go.id</span></p>
+      <p style="font-size: 11pt; margin: 0; font-weight: 500;">Pos-el: <span style="font-style: italic; font-weight: 500;">pkmponcokusumo@gmail.com</span>, Kode Pos: 65157</p>
     </div>
   </div>
 
