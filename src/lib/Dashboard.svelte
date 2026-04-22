@@ -1,10 +1,15 @@
 <script>
     // Menerima fungsi pindah halaman dari App.svelte
     export let switchView;
+
+    // Fungsi khusus untuk membuka link eksternal (GAS) di tab baru
+    function openExternalApp(url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+    }
 </script>
 
 <div class="content-view block animate-fade-in no-print py-12 px-6 lg:px-12 max-w-7xl mx-auto">
-    <h3 class="text-2xl font-bold mb-2 text-[#1c1d1f]">Modul Unggulan untuk Anda</h3>
+    <h3 class="text-2xl font-bold mb-2 text-[#1c1d1f]">Solusi untuk Anda agar Lebih SATSET</h3>
     <p class="text-gray-500 mb-8">Pintasan menuju aplikasi yang paling sering digunakan oleh Operator.</p>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6" id="cardContainer">
@@ -58,16 +63,40 @@
         </div>
 
         <div on:click={() => switchView('visum')} class="course-card flex flex-col bg-white rounded-md overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-pointer hover:-translate-y-1">
-    <div class="card-image-container relative h-36 lg:h-40 overflow-hidden border-b border-gray-200 bg-slate-900">
-        <img src="https://images.pexels.com/photos/923681/pexels-photo-923681.jpeg?auto=compress&cs=tinysrgb&w=600" class="w-full h-full object-cover" alt="Visum">
-    </div>
-    <div class="p-3 flex-1 flex flex-col">
-        <h4 class="font-bold text-base mb-1 line-clamp-2 leading-tight text-[#1c1d1f]">Laporan Visum (VeR)</h4>
-        <p class="text-xs text-gray-500 mb-2">Dokumen Pro Justitia & Approval Kapus</p>
-        <div class="font-bold text-sm text-[#1c1d1f] mt-auto">Akses Medis & Hukum</div>
-        <div class="mt-2"><span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded-sm">Rahasia</span></div>
-    </div>
-</div>
+            <div class="card-image-container relative h-36 lg:h-40 overflow-hidden border-b border-gray-200 bg-slate-900">
+                <img src="https://images.pexels.com/photos/923681/pexels-photo-923681.jpeg?auto=compress&cs=tinysrgb&w=600" class="w-full h-full object-cover" alt="Visum">
+            </div>
+            <div class="p-3 flex-1 flex flex-col">
+                <h4 class="font-bold text-base mb-1 line-clamp-2 leading-tight text-[#1c1d1f]">Laporan Visum (VeR)</h4>
+                <p class="text-xs text-gray-500 mb-2">Dokumen Pro Justitia & Approval Kapus</p>
+                <div class="font-bold text-sm text-[#1c1d1f] mt-auto">Akses Medis & Hukum</div>
+                <div class="mt-2"><span class="bg-red-100 text-red-800 text-xs font-bold px-2 py-1 rounded-sm">Rahasia</span></div>
+            </div>
+        </div>
+
+        <div on:click={() => openExternalApp('https://script.google.com/macros/s/AKfycbwCyORIwdowJpgKUpSmeVp9bZSJT2Ohk5x6t37f0wOA2uAJK1Yf8p8Iy9RsljZrJTzK-w/exec')} 
+             class="course-card flex flex-col bg-white rounded-md overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-pointer hover:-translate-y-1 ring-1 ring-emerald-500/30">
+            <div class="card-image-container relative h-36 lg:h-40 overflow-hidden border-b border-gray-200 bg-slate-100 flex items-center justify-center group">
+                <div class="absolute inset-0 bg-gradient-to-t from-emerald-900/80 to-emerald-800/40 mix-blend-multiply z-10"></div>
+                <img src="https://images.unsplash.com/photo-1586281380349-632531db7ed4?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover absolute inset-0 group-hover:scale-105 transition-transform duration-500" alt="Rekam Medis">
+                <span class="material-icons text-white text-5xl z-20 drop-shadow-lg group-hover:scale-110 transition-transform">folder_shared</span>
+                
+                <div class="absolute top-2 right-2 z-20 bg-white/90 backdrop-blur-sm text-emerald-800 text-[10px] font-black px-2 py-1 rounded shadow-sm flex items-center">
+                    <span class="material-icons text-[12px] mr-1">open_in_new</span> Google App
+                </div>
+            </div>
+            
+            <div class="p-3 flex-1 flex flex-col">
+                <h4 class="font-bold text-base mb-1 line-clamp-2 leading-tight text-[#1c1d1f]">Form Input & Cari No. RM</h4>
+                <p class="text-xs text-gray-500 mb-2">Pencarian & Registrasi Pasien (External App)</p>
+                <div class="font-bold text-sm text-emerald-700 mt-auto flex items-center">
+                    <span class="material-icons text-[16px] mr-1">badge</span> Pendaftaran
+                </div>
+                <div class="mt-2 flex gap-1">
+                    <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded-sm">Rahasia</span>
+                </div>
+            </div>
+        </div>
 
     </div>
 </div>

@@ -80,12 +80,12 @@
           <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <i data-lucide="search" class="w-5 h-5 text-gray-400 group-focus-within:text-udemy-purple transition-colors"></i>
           </div>
-          <input type="text" placeholder="Cari modul (misal: 'Billing', 'Laporan Jaga', 'SBAR')...." 
+          <input type="text" placeholder="Cari Aplikasi (misal: 'Billing', 'Laporan Jaga', 'SBAR')...." 
               class="w-full bg-udemy-light border border-gray-300 rounded-full py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-udemy-purple focus:border-transparent transition-all text-sm placeholder-gray-500">
       </div>
 
       <div class="flex items-center ml-auto space-x-6">
-          <button on:click={() => switchView('dashboard')} class="hidden lg:block text-sm font-medium hover:text-udemy-purple transition-colors">Modul Saya</button>
+          <button on:click={() => switchView('dashboard')} class="hidden lg:block text-sm font-medium hover:text-udemy-purple transition-colors">Aplikasi Saya</button>
           
           <button on:click={() => switchView('app-admin')} class="hidden md:flex items-center text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors">
               <span class="material-icons text-sm mr-1">admin_panel_settings</span> Admin
@@ -98,7 +98,7 @@
   </header>
 
   <div class="hidden md:flex justify-center space-x-8 py-3 shadow-[0_4px_6px_-6px_rgba(0,0,0,0.1)] text-sm text-udemy-gray bg-white relative z-40 no-print">
-      <button on:click={() => switchView('dashboard')} class="hover:text-udemy-purple hover:font-bold transition-all">Semua Modul</button>
+      <button on:click={() => switchView('dashboard')} class="hover:text-udemy-purple hover:font-bold transition-all">Semua Aplikasi</button>
       <button on:click={() => switchView('app-ebilling')} class="hover:text-udemy-purple hover:font-bold transition-all">Administrasi & Kasir</button>
       <button on:click={() => switchView('app-jaga-input')} class="hover:text-udemy-purple hover:font-bold transition-all">Operasional Shift</button>
       <button on:click={() => switchView('app-sbar')} class="hover:text-udemy-purple hover:font-bold transition-all">Form SBAR</button>
