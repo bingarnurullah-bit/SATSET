@@ -54,6 +54,7 @@
   // =====================================
   async function muatMasterData() {
     try {
+      // HANYA MENYEDOT NAMA DAN HARGA (TANPA STOK)
       const resObat = await supabase.from('master_obat').select('nama, harga');
       dataObatDinamis = resObat.data || [];
 
@@ -142,7 +143,6 @@
       if (editRowKasir) batalEditKasir();
       if (showRiwayat) muatRiwayatKasir();
       
-      // JURUS IFRAME DIEKSEKUSI DI SINI (window.print() DIHAPUS)
       cetakKwitansiIframe();
 
     } catch (err) {
@@ -210,20 +210,11 @@
   // JURUS PAMUNGKAS: CETAK IFRAME (ANTI-SCREENSHOT)
   // ==========================================
   function cetakKwitansiIframe() {
-    // 1. Ambil HANYA Teks & Tabel di dalam area Kwitansi
     const printContent = document.getElementById('area-cetak-kwitansi').innerHTML;
-
-    // 2. Buat iFrame Tersembunyi (Ruang Isolasi)
     const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = 'none';
+    iframe.style.position = 'fixed'; iframe.style.right = '0'; iframe.style.bottom = '0'; iframe.style.width = '0'; iframe.style.height = '0'; iframe.style.border = 'none';
     document.body.appendChild(iframe);
 
-    // 3. Rakit Kertas Cetak F4
     const doc = iframe.contentWindow.document;
     doc.open();
     doc.write(`
@@ -232,17 +223,12 @@
       <head>
         <title>Kwitansi_EBilling_${identitasValues[0] || 'Pasien'}</title>
         <style>
-          /* Ukuran Kertas F4 Standar */
           @page { size: 215.9mm 330.2mm; margin: 10mm 15mm; }
           body { font-family: 'Arial', sans-serif; background: white; color: black; margin: 0; padding: 0; }
-          
-          /* Pengunci Warna Tabel & Anti Potong */
           table { border-collapse: collapse; width: 100%; page-break-inside: auto; }
           tr { page-break-inside: avoid; page-break-after: auto; }
           td, th { page-break-inside: avoid; color: black !important; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          
-          /* Blokir Ekstensi Chrome (Magical dll) */
           magical-app, grammarly-extension, div[id^="magical"] { display: none !important; }
         </style>
       </head>
@@ -253,7 +239,6 @@
     `);
     doc.close();
 
-    // 4. Sapu bersih iFrame setelah print tertutup
     window.addEventListener('message', function cleanup(e) {
       if (e.data === 'printSelesaiEBilling') {
         setTimeout(() => { if (document.body.contains(iframe)) document.body.removeChild(iframe); }, 500);
@@ -261,10 +246,7 @@
       }
     });
 
-    // Pengaman jika browser memblokir respon postMessage
-    setTimeout(() => {
-      if (document.body.contains(iframe)) document.body.removeChild(iframe);
-    }, 8000);
+    setTimeout(() => { if (document.body.contains(iframe)) document.body.removeChild(iframe); }, 8000);
   }
 </script>
 
@@ -415,6 +397,7 @@
 
       {#if showRiwayat}
         <div id="kasir-riwayat-section" class="mt-8 bg-white border border-gray-200 rounded-xl p-6 shadow-sm animate-fade-in">
+          
           <div class="flex justify-between items-center mb-4 border-b pb-4">
             <h3 class="font-bold text-xl text-[#0F172A]">Riwayat Kuitansi Terakhir</h3>
             <button on:click={muatRiwayatKasir} class="text-sm bg-blue-50 text-blue-600 font-bold px-4 py-2 rounded-lg hover:bg-blue-100 flex items-center transition-colors">
@@ -696,4 +679,10 @@
   
   .custom-scroll::-webkit-scrollbar { width: 4px; }
   .custom-scroll::-webkit-scrollbar-thumb { background: #D4AF37; border-radius: 10px; }
+
+  .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 </style>

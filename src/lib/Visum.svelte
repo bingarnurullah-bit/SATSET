@@ -96,17 +96,55 @@
   // ==========================
   // FUNGSI DATABASE
   // ==========================
+// ==========================
+  // FUNGSI DATABASE (DENGAN AUTO-DELETE MAX 30)
+  // ==========================
   async function kirimDataVisum() {
     if (!form.nama_korban) return alert("Isi Nama Korban terlebih dahulu!");
     isSaving = true;
     try {
-      // Pastikan foto_bukti diset sebagai array kosong jika tidak ada foto
       const payloadToSave = { ...form, foto_bukti: form.foto_bukti || [] };
 
       if (editRow) {
+        // Jika hanya Update (Edit), langsung simpan saja tanpa perlu hapus data lama
         const { error } = await supabase.from('laporan_visum').update(payloadToSave).eq('id', editRow);
         if (error) throw error; alert("Draft Visum berhasil diupdate.");
       } else {
+        // --- LOGIKA AUTO-DELETE (MAKSIMAL 30 DATA) ---
+        // 1. Cek dulu ada berapa jumlah laporan saat ini
+        const { count, error: countErr } = await supabase
+          .from('laporan_visum')
+          .select('*', { count: 'exact', head: true });
+        
+        if (countErr) throw countErr;
+
+        // 2. Jika jumlahnya sudah 30 (atau lebih), cari data paling tua dan hapus
+        if (count >= 30) {
+           // Berapa data yang harus dihapus? (misal ada 30, kita harus hapus 1 biar jadi 29, baru masuk 1 data baru)
+           const jumlahDihapus = (count - 30) + 1; 
+
+           // Ambil ID data yang paling lama (ascending: true)
+           const { data: dataTertua, error: getOldErr } = await supabase
+             .from('laporan_visum')
+             .select('id')
+             .order('created_at', { ascending: true })
+             .limit(jumlahDihapus);
+
+           if (getOldErr) throw getOldErr;
+
+           // Hapus data-data tua tersebut
+           if (dataTertua && dataTertua.length > 0) {
+             const idDihapus = dataTertua.map(item => item.id);
+             const { error: delErr } = await supabase
+               .from('laporan_visum')
+               .delete()
+               .in('id', idDihapus);
+             if (delErr) throw delErr;
+           }
+        }
+        // --- AKHIR LOGIKA AUTO-DELETE ---
+
+        // 3. Setelah ruangnya tersedia, baru simpan data barunya
         const { error } = await supabase.from('laporan_visum').insert([payloadToSave]);
         if (error) throw error; alert("Draft Visum berhasil disimpan.");
         batalEditVisum();
@@ -115,7 +153,7 @@
     } catch (error) { alert("Gagal menyimpan: " + error.message); } 
     finally { isSaving = false; }
   }
-
+  
   async function muatRiwayatVisum() {
     isRiwayatLoading = true;
     try {

@@ -1,5 +1,7 @@
 <script>
   import { supabase } from './supabase.js';
+  import { saveAs } from "file-saver";
+  import AuthAdmin from './AuthAdmin.svelte'; // 👈 IMPORT KOMPONEN MODAL PENJAGA PINTU
 
   export let switchView;
 
@@ -109,7 +111,6 @@
   let cariObat = "";
   let cariLayanan = "";
 
-  // DIPERBARUI: Form Stok Jaga sekarang punya memori stok_awal
   let formStokJaga = { nama: "", jumlah: "", stok_awal: "" };
   let editIdStokJaga = null;
   let cariStokJaga = "";
@@ -138,7 +139,8 @@
         const resLayanan = await supabase.from('master_layanan').select('*').order('kategori', { ascending: true });
         daftarLayanan = resLayanan.data || [];
 
-        const resKasir = await supabase.from('riwayat_kasir').select('tanggal, total_biaya').order('tanggal', { ascending: false });
+        // SEDOT SEMUA DATA KASIR TANPA LIMIT (KHUSUS HALAMAN ADMIN) UNTUK KEPERLUAN ARSIP
+        const resKasir = await supabase.from('riwayat_kasir').select('*').order('tanggal', { ascending: false });
         riwayatTransaksi = resKasir.data || [];
         
         if (!filterMulai) setFilterBulanIni();
@@ -162,9 +164,6 @@
   function resetFilter() { filterMulai = ""; filterSelesai = ""; }
   function downloadPDF() { window.print(); }
 
-  // ==========================================
-  // SISTEM GULIR LAYAR OTOMATIS
-  // ==========================================
   function gulirKeAtas() {
     setTimeout(() => {
       const mainArea = document.getElementById('main-content-area');
@@ -174,7 +173,7 @@
   }
 
   // ==========================
-  // FUNGSI CRUD OBAT (E-Billing)
+  // FUNGSI CRUD OBAT
   // ==========================
   async function simpanObat() {
     if (!formObat.nama || !formObat.harga) return alert("Isi nama dan harga!");
@@ -185,77 +184,48 @@
       formObat = { nama: "", harga: "", stok: "" }; editIdObat = null; muatSemuaData(); 
     } catch (err) { alert("Error: " + err.message); }
   }
-  function siapkanEditObat(o) { 
-    formObat = { nama: o.nama, harga: o.harga, stok: o.stok || 0 }; 
-    editIdObat = o.id; 
-    gulirKeAtas(); 
-  }
+  function siapkanEditObat(o) { formObat = { nama: o.nama, harga: o.harga, stok: o.stok || 0 }; editIdObat = o.id; gulirKeAtas(); }
   async function hapusObat(id) { if(confirm("Yakin hapus?")) { await supabase.from('master_obat').delete().eq('id', id); muatSemuaData(); } }
 
   // ==========================
-  // FUNGSI CRUD STOK JAGA (DIPERKUAT DENGAN STOK AWAL)
+  // FUNGSI CRUD STOK JAGA 
   // ==========================
   async function simpanStokJaga() {
     if (!formStokJaga.nama || formStokJaga.jumlah === "") return alert("Isi nama obat dan jumlah sisa fisiknya!");
     try {
       const namaObatClean = formStokJaga.nama.trim().toUpperCase();
       const jumlahInput = Number(formStokJaga.jumlah) || 0;
-      const stokAwalInput = Number(formStokJaga.stok_awal) || jumlahInput; // Jika kosong, set sama dengan jumlah awal
+      const stokAwalInput = Number(formStokJaga.stok_awal) || jumlahInput; 
       
-      let qtyMasuk = 0;
-      let totalStokAkhir = 0;
-      let ketLog = "";
+      let qtyMasuk = 0; let totalStokAkhir = 0; let ketLog = "";
 
       if (editIdStokJaga) {
         const dataLama = daftarStokJaga.find(o => o.id === editIdStokJaga);
         if (dataLama) {
           if (jumlahInput > dataLama.jumlah) {
-             qtyMasuk = jumlahInput - dataLama.jumlah;
-             totalStokAkhir = jumlahInput;
-             ketLog = `Penambahan/Restock oleh Admin (${userEmail})`;
+             qtyMasuk = jumlahInput - dataLama.jumlah; totalStokAkhir = jumlahInput; ketLog = `Penambahan/Restock oleh Admin (${userEmail})`;
           } else if (jumlahInput < dataLama.jumlah) {
-             const qtyKeluar = dataLama.jumlah - jumlahInput;
-             totalStokAkhir = jumlahInput;
-             ketLog = `Koreksi pengurangan oleh Admin (${userEmail})`;
-             
-             await supabase.from('log_steling_obat').insert({
-                nama_obat: namaObatClean, jenis_mutasi: 'KELUAR', jumlah: qtyKeluar, sisa_stok: totalStokAkhir, keterangan: ketLog
-             });
+             const qtyKeluar = dataLama.jumlah - jumlahInput; totalStokAkhir = jumlahInput; ketLog = `Koreksi pengurangan oleh Admin (${userEmail})`;
+             await supabase.from('log_steling_obat').insert({ nama_obat: namaObatClean, jenis_mutasi: 'KELUAR', jumlah: qtyKeluar, sisa_stok: totalStokAkhir, keterangan: ketLog });
           }
         }
         await supabase.from('stok_obat_jaga').update({ nama: namaObatClean, jumlah: jumlahInput, stok_awal: stokAwalInput }).eq('id', editIdStokJaga);
-
       } else {
-        qtyMasuk = jumlahInput;
-        totalStokAkhir = jumlahInput;
-        ketLog = `Input obat baru ke Laci Jaga oleh (${userEmail})`;
+        qtyMasuk = jumlahInput; totalStokAkhir = jumlahInput; ketLog = `Input obat baru ke Laci Jaga oleh (${userEmail})`;
         await supabase.from('stok_obat_jaga').insert([{ nama: namaObatClean, jumlah: jumlahInput, stok_awal: stokAwalInput }]);
       }
 
       if (qtyMasuk > 0) {
-        await supabase.from('log_steling_obat').insert({
-          nama_obat: namaObatClean, jenis_mutasi: 'MASUK', jumlah: qtyMasuk, sisa_stok: totalStokAkhir, keterangan: ketLog
-        });
+        await supabase.from('log_steling_obat').insert({ nama_obat: namaObatClean, jenis_mutasi: 'MASUK', jumlah: qtyMasuk, sisa_stok: totalStokAkhir, keterangan: ketLog });
       }
-
-      formStokJaga = { nama: "", jumlah: "", stok_awal: "" }; 
-      editIdStokJaga = null; 
-      muatSemuaData(); 
-      alert("Stok berhasil disimpan dan terekam di Steling! 📦✅");
-    } catch (err) { 
-      alert("Error saat menyimpan stok: " + err.message); 
-    }
+      formStokJaga = { nama: "", jumlah: "", stok_awal: "" }; editIdStokJaga = null; muatSemuaData(); alert("Stok berhasil disimpan dan terekam di Steling! 📦✅");
+    } catch (err) { alert("Error saat menyimpan stok: " + err.message); }
   }
-
-  function siapkanEditStokJaga(o) { 
-    formStokJaga = { nama: o.nama, jumlah: o.jumlah || 0, stok_awal: o.stok_awal || 0 }; 
-    editIdStokJaga = o.id; 
-    gulirKeAtas(); 
-  }
+  function siapkanEditStokJaga(o) { formStokJaga = { nama: o.nama, jumlah: o.jumlah || 0, stok_awal: o.stok_awal || 0 }; editIdStokJaga = o.id; gulirKeAtas(); }
   async function hapusStokJaga(id) { if(confirm("Yakin hapus obat dari Laporan Jaga?")) { await supabase.from('stok_obat_jaga').delete().eq('id', id); muatSemuaData(); } }
 
   // ==========================
-  // FUNGSI CRUD LAYANAN (E-Billing)
+  // FUNGSI CRUD LAYANAN
   // ==========================
   async function simpanLayanan() {
     if (!formLayanan.kategori || !formLayanan.nama || !formLayanan.harga) return alert("Isi semua data!");
@@ -266,14 +236,88 @@
       formLayanan = { kategori: "", nama: "", harga: "" }; editIdLayanan = null; muatSemuaData(); 
     } catch (err) { alert("Error: " + err.message); }
   }
-  function siapkanEditLayanan(l) { 
-    formLayanan = { kategori: l.kategori, nama: l.nama, harga: l.harga }; 
-    editIdLayanan = l.id; 
-    gulirKeAtas(); 
-  }
+  function siapkanEditLayanan(l) { formLayanan = { kategori: l.kategori, nama: l.nama, harga: l.harga }; editIdLayanan = l.id; gulirKeAtas(); }
   async function hapusLayanan(id) { if(confirm("Yakin hapus?")) { await supabase.from('master_layanan').delete().eq('id', id); muatSemuaData(); } }
 
+
+  // ==========================================
+  // FITUR ARSIP & PEMBERSIHAN KHUSUS ADMIN EBILLING
+  // ==========================================
+  let isDownloadingArsip = false;
+  let showPurgeModal = false;
+
+  // LANGKAH 1: Download Arsip PDF Keuangan
+  async function unduhArsipKeuangan() {
+    isDownloadingArsip = true;
+    try {
+      if (!riwayatFiltered || riwayatFiltered.length === 0) {
+        return alert("Tidak ada data transaksi pada periode filter saat ini. Ubah filter tanggal (Semua) jika ingin mengunduh seluruh data.");
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF('portrait'); 
+
+      doc.setFontSize(14); doc.setFont("helvetica", "bold"); doc.text("ARSIP REKAPITULASI TRANSAKSI KASIR E-BILLING", 14, 15);
+      doc.setFontSize(10); doc.setFont("helvetica", "normal"); 
+      doc.text("UPT PUSKESMAS PONCOKUSUMO", 14, 21); 
+      doc.text(`Periode: ${filterMulai ? filterMulai : 'Awal'} s.d ${filterSelesai ? filterSelesai : 'Akhir'}`, 14, 27);
+      doc.text("Diekspor pada: " + new Date().toLocaleString('id-ID'), 14, 33);
+
+      const tableColumn = ["Tanggal", "Nama Pasien / NIK", "Total Biaya (Rp)"];
+      const tableRows = riwayatFiltered.map(item => [
+        item.tanggal, 
+        `${item.nama_pasien || "-"} (${item.rm || "-"})`, 
+        Number(item.total_biaya).toLocaleString('id-ID')
+      ]);
+
+      // Tambahkan baris total di akhir
+      tableRows.push(["", "TOTAL PENDAPATAN", Number(totalPendapatanFiltered).toLocaleString('id-ID')]);
+
+      doc.autoTable({ 
+        head: [tableColumn], 
+        body: tableRows, 
+        startY: 38, 
+        theme: 'grid', 
+        styles: { fontSize: 9, cellPadding: 3 }, 
+        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' }, // Slate 900
+        alternateRowStyles: { fillColor: [248, 250, 252] }, // Slate 50
+        didParseCell: function(data) {
+           // Buat baris Total menjadi bold dan warna hijau
+           if (data.row.index === tableRows.length - 1) {
+              data.cell.styles.fontStyle = 'bold';
+              data.cell.styles.textColor = [5, 150, 105]; // Emerald 600
+           }
+        }
+      });
+      
+      const tahunIni = new Date().getFullYear();
+      doc.save(`Arsip_Kasir_EBilling_${tahunIni}.pdf`);
+      
+      alert("✅ Arsip PDF Keuangan berhasil diunduh!");
+    } catch (err) { alert("❌ Gagal mengunduh arsip: " + err.message); } finally { isDownloadingArsip = false; }
+  }
+
+  // LANGKAH 2: Eksekusi Hapus Database setelah disetujui dari AuthAdmin
+  async function jalankanPenghapusanDBKasir() {
+    try {
+      const { error: delErr } = await supabase.from('riwayat_kasir').delete().neq('id', 0);
+      if (delErr) throw delErr;
+      alert("🔥 EKSEKUSI BERHASIL!\nDatabase riwayat Kasir telah dihapus permanen dan bersih untuk tahun baru.");
+      muatSemuaData(); // Refresh UI
+    } catch (err) {
+      alert("Gagal menghapus database: " + err.message);
+    }
+  }
+
 </script>
+
+<AuthAdmin 
+  bind:showModal={showPurgeModal} 
+  onSuccess={jalankanPenghapusanDBKasir} 
+  judulAksi="Tutup Buku Tahunan Keuangan"
+  pesanPeringatan="Tindakan ini akan menghapus <b class='text-red-600'>SELURUH</b> riwayat Kasir secara permanen. Masukkan kredensial Administrator untuk melanjutkan."
+  hanyaAdmin={true} 
+/>
 
 {#if isAuthLoading}
   <div class="min-h-screen bg-slate-50 flex justify-center items-center">
@@ -295,7 +339,7 @@
       <h2 class="text-2xl font-black text-slate-900 mb-1">OTORISASI ADMIN</h2>
       <p class="text-xs text-slate-500 font-bold mb-6">Sistem SATSET Terpadu</p>
       
-      <input type="email" bind:value={inputEmail} placeholder="Email Admin" class="w-full p-4 mb-4 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold focus:border-slate-800 outline-none text-center">
+      <input type="email" bind:value={inputEmail} placeholder="Email (Admin/Bendahara/Apotek)" class="w-full p-4 mb-4 bg-slate-50 border-2 border-slate-200 rounded-xl font-bold focus:border-slate-800 outline-none text-center">
       <input type="password" bind:value={inputPassword} on:keydown={(e) => e.key === 'Enter' && handleLogin()} placeholder="Password" class="w-full p-4 bg-slate-50 border-2 border-slate-200 rounded-xl text-center text-xl tracking-[0.3em] font-black focus:border-slate-800 outline-none mb-6">
       
       <button on:click={handleLogin} class="w-full bg-slate-800 hover:bg-black text-white font-black py-4 rounded-xl shadow-lg transition-all flex justify-center items-center">
@@ -330,7 +374,7 @@
             </li>
             <li>
               <button on:click={() => tabAktif = 'obat'} class="w-full flex items-center px-4 py-3 rounded-xl font-bold text-sm transition-colors {tabAktif === 'obat' ? 'bg-[#D4AF37] text-black shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}">
-                <span class="material-icons mr-3 text-lg">inventory_2</span> Master Obat
+                <span class="material-icons mr-3 text-lg">inventory_2</span> Master Harga Obat
               </button>
             </li>
           {/if}
@@ -376,10 +420,11 @@
         </p>
       </div>
 
-      <div class="print-area animate-fade-in max-w-5xl mx-auto">
+      <div class="print-area animate-fade-in max-w-5xl mx-auto pb-16">
         
         {#if tabAktif === 'rekap'}
           <h2 class="text-2xl font-black text-slate-800 mb-6 border-b-2 pb-2 no-print">Laporan Keuangan E-Billing</h2>
+          
           <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-4 justify-between items-end no-print">
             <div class="flex gap-4">
               <div>
@@ -391,11 +436,11 @@
                 <input type="date" bind:value={filterSelesai} class="p-2 border rounded-lg font-bold outline-none">
               </div>
             </div>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
               <button on:click={setFilterBulanIni} class="bg-slate-100 hover:bg-slate-200 font-bold px-4 py-2 rounded-lg text-sm">Bulan Ini</button>
               <button on:click={resetFilter} class="bg-slate-100 hover:bg-slate-200 font-bold px-4 py-2 rounded-lg text-sm">Semua</button>
-              <button on:click={downloadPDF} class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg shadow flex items-center">
-                <span class="material-icons mr-2 text-sm">print</span> Cetak Laporan
+              <button on:click={downloadPDF} class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-lg shadow flex items-center text-sm">
+                <span class="material-icons mr-2 text-sm">print</span> Print
               </button>
             </div>
           </div>
@@ -403,24 +448,46 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div class="bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
               <span class="material-icons absolute -right-4 -bottom-4 text-8xl text-white/20">account_balance_wallet</span>
-              <p class="font-bold text-emerald-100 text-xs uppercase tracking-widest mb-1">Total Pendapatan</p>
+              <p class="font-bold text-emerald-100 text-xs uppercase tracking-widest mb-1">Total Pendapatan Terfilter</p>
               <h2 class="text-4xl font-black">Rp {totalPendapatanFiltered.toLocaleString('id-ID')}</h2>
               <p class="text-sm mt-2 font-bold opacity-90">{totalPasienFiltered} Transaksi Terfilter</p>
             </div>
           </div>
 
+          {#if userRole === 'superadmin' || userRole === 'keuangan'}
+            <div class="bg-slate-800 rounded-2xl p-4 shadow-sm border border-slate-700 mb-6 flex flex-col md:flex-row gap-4 justify-between items-center no-print text-white">
+              <div>
+                <h3 class="font-bold text-sm">Tutup Buku & Pembersihan (Purging)</h3>
+                <p class="text-xs text-slate-400">Unduh arsip lengkap PDF (sesuai filter tanggal di atas) lalu kosongkan database untuk tahun berikutnya.</p>
+              </div>
+              <div class="flex gap-2">
+                <button on:click={unduhArsipKeuangan} disabled={isDownloadingArsip} class="bg-emerald-600 hover:bg-emerald-700 font-bold px-4 py-2 rounded-lg text-xs flex items-center transition">
+                  {#if isDownloadingArsip}
+                    <span class="material-icons animate-spin mr-1 text-sm">sync</span> Mengekspor PDF...
+                  {:else}
+                    <span class="material-icons mr-1 text-sm">picture_as_pdf</span> 1. Unduh Arsip
+                  {/if}
+                </button>
+                <button on:click={() => showPurgeModal = true} class="bg-red-600 hover:bg-red-700 font-bold px-4 py-2 rounded-lg text-xs flex items-center transition">
+                  <span class="material-icons mr-1 text-sm">delete_sweep</span> 2. Kosongkan DB
+                </button>
+              </div>
+            </div>
+          {/if}
+
           <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <table class="w-full text-sm text-left print-table">
               <thead class="bg-slate-800 text-white">
-                <tr><th class="p-4">Tanggal Transaksi</th><th class="p-4 text-right">Total Pendapatan (Rp)</th></tr>
+                <tr><th class="p-4">Tanggal Transaksi</th><th class="p-4">Nama Pasien / NIK</th><th class="p-4 text-right">Total Biaya (Rp)</th></tr>
               </thead>
               <tbody>
                 {#if riwayatFiltered.length === 0}
-                  <tr><td colspan="2" class="p-8 text-center text-slate-500 italic">Tidak ada transaksi di periode ini.</td></tr>
+                  <tr><td colspan="3" class="p-8 text-center text-slate-500 italic">Tidak ada transaksi di periode ini.</td></tr>
                 {/if}
                 {#each riwayatFiltered as r}
                   <tr class="border-b hover:bg-slate-50">
                     <td class="p-4">{new Date(r.tanggal).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                    <td class="p-4 font-bold">{r.nama_pasien || "-"} <span class="text-xs text-slate-400 font-normal block">NIK/RM: {r.rm || "-"}</span></td>
                     <td class="p-4 text-right font-bold text-emerald-600">{Number(r.total_biaya).toLocaleString('id-ID')}</td>
                   </tr>
                 {/each}
@@ -460,14 +527,13 @@
               </div>
               <table class="w-full text-sm text-left">
                 <thead class="bg-slate-800 text-white">
-                  <tr><th class="p-4 w-12 text-center">No</th><th class="p-4">Nama Barang</th><th class="p-4 text-center w-32">Stok Gudang</th><th class="p-4 text-right w-40">Tarif Jual (Rp)</th><th class="p-4 text-center w-32">Aksi</th></tr>
+                  <tr><th class="p-4 w-12 text-center">No</th><th class="p-4">Nama Barang</th><th class="p-4 text-right w-40">Tarif Jual (Rp)</th><th class="p-4 text-center w-32">Aksi</th></tr>
                 </thead>
                 <tbody>
                   {#each filteredObat as o, i}
                     <tr class="border-b hover:bg-slate-50">
                       <td class="p-4 text-center text-slate-400">{i+1}</td>
                       <td class="p-4 font-bold text-slate-800 uppercase">{o.nama}</td>
-                      <td class="p-4 text-center font-black {o.stok < 10 ? 'text-red-600 bg-red-50' : 'text-blue-700 bg-blue-50'}">{o.stok || 0}</td>
                       <td class="p-4 text-right font-semibold">{Number(o.harga).toLocaleString('id-ID')}</td>
                       <td class="p-4 text-center">
                         <button on:click={() => siapkanEditObat(o)} class="text-blue-600 hover:text-blue-800 mx-1"><span class="material-icons text-sm">edit</span></button>
