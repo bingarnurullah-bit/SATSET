@@ -19,7 +19,7 @@
                 <img src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover" alt="E-Billing">
             </div>
             <div class="p-3 flex-1 flex flex-col">
-                <h4 class="font-bold text-base mb-1 line-clamp-2 leading-tight text-[#1c1d1f]">Formulir E-Billing Otomatis Poncokusumo</h4>
+                <h4 class="font-bold text-base mb-1 line-clamp-2 leading-tight text-[#1c1d1f]">Formulir E-Billing Poncokusumo</h4>
                 <p class="text-xs text-gray-500 mb-2">Bagian Administrasi & Kasir</p>
                 <div class="font-bold text-sm text-[#1c1d1f] mt-auto">Akses Keuangan</div>
                 <div class="mt-2"><span class="bg-[#eceb98] text-[#3d3c0a] text-xs font-bold px-2 py-1 rounded-sm">Bestseller</span></div>

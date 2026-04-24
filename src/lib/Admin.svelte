@@ -5,8 +5,8 @@
 
   export let switchView;
 
-  // ==========================
-  // SISTEM KEAMANAN (SUPABASE AUTH)
+// ==========================
+  // SISTEM KEAMANAN (SUPABASE AUTH - STRICT MODE)
   // ==========================
   let isLoggedIn = false;
   let isAuthLoading = true; 
@@ -16,6 +16,21 @@
   let inputEmail = "";
   let inputPassword = "";
 
+  // [BARU] Fungsi Sakti: Memaksa Supabase hanya menggunakan Session Storage
+  // Artinya, saat tab browser ditutup, sesi akan langsung hangus!
+  if (typeof window !== "undefined") {
+    // 1. Cegah Supabase membaca Local Storage (Sesi Permanen)
+    const kunciLama = Object.keys(localStorage).filter(k => k.startsWith('sb-'));
+    kunciLama.forEach(k => localStorage.removeItem(k));
+    
+    // 2. Beri tahu aplikasi untuk logout setiap kali halaman dimuat ulang
+    window.addEventListener('beforeunload', async () => {
+        if (isLoggedIn) {
+            await supabase.auth.signOut();
+        }
+    });
+  }
+  
   async function cekSesi() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {

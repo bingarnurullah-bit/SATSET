@@ -207,7 +207,7 @@
   }
 
   // ==========================================
-  // JURUS PAMUNGKAS: CETAK IFRAME (ANTI-SCREENSHOT)
+  // JURUS PAMUNGKAS: CETAK IFRAME (ANTI-SCREENSHOT) & SMART PAGINATION
   // ==========================================
   function cetakKwitansiIframe() {
     const printContent = document.getElementById('area-cetak-kwitansi').innerHTML;
@@ -223,11 +223,31 @@
       <head>
         <title>Kwitansi_EBilling_${identitasValues[0] || 'Pasien'}</title>
         <style>
+          /* Ukuran Kertas F4 Standar */
           @page { size: 215.9mm 330.2mm; margin: 10mm 15mm; }
           body { font-family: 'Arial', sans-serif; background: white; color: black; margin: 0; padding: 0; }
-          table { border-collapse: collapse; width: 100%; page-break-inside: auto; }
-          tr { page-break-inside: avoid; page-break-after: auto; }
-          td, th { page-break-inside: avoid; color: black !important; }
+          
+          /* Pengaturan Tabel Basic */
+          table { border-collapse: collapse; width: 100%; }
+          td, th { color: black !important; }
+          
+          /* 🔥 SMART PAGINATION RULES 🔥 */
+          /* 1. Kuitansi Utama dan Arsip Kasir harus tetap utuh di dalam bloknya masing-masing */
+          .kuitansi-block { 
+             page-break-inside: avoid; /* Jangan pisahkan blok ini ke halaman berbeda jika muat */
+             margin-bottom: 20px; 
+          }
+          
+          /* 2. Baris tabel tidak boleh terpotong di tengah huruf */
+          tr { page-break-inside: avoid; }
+          
+          /* 3. Garis potong hanya muncul jika masih dalam satu halaman */
+          .garis-potong {
+             border-bottom: 2px dashed #999;
+             margin-bottom: 20px;
+             padding-bottom: 20px;
+          }
+
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           magical-app, grammarly-extension, div[id^="magical"] { display: none !important; }
         </style>
@@ -465,8 +485,8 @@
       </div>
 
       <div id="area-cetak-kwitansi" class="mt-12 print-content">
-        <div style="page-break-after: always; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 2px dashed #999; display: block;">
-          
+        
+        <div class="kuitansi-block garis-potong">
           <table style="width: 100%; margin-bottom: 5px; border-bottom: 3px solid black; padding-bottom: 5px; border-collapse: collapse;">
             <tbody>
               <tr>
@@ -575,7 +595,7 @@
           </table>
         </div>
 
-        <div style="display: block;">
+        <div class="kuitansi-block">
           <table style="width: 100%; margin-bottom: 5px; border-bottom: 3px solid black; padding-bottom: 5px; border-collapse: collapse;">
             <tbody>
               <tr>

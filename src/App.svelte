@@ -97,15 +97,20 @@
       </div>
   </header>
 
-  <div class="hidden md:flex justify-center space-x-8 py-3 shadow-[0_4px_6px_-6px_rgba(0,0,0,0.1)] text-sm text-udemy-gray bg-white relative z-40 no-print">
+<div class="hidden md:flex justify-center space-x-8 py-3 shadow-[0_4px_6px_-6px_rgba(0,0,0,0.1)] text-sm text-udemy-gray bg-white relative z-40 no-print">
       <button on:click={() => switchView('dashboard')} class="hover:text-udemy-purple hover:font-bold transition-all">Semua Aplikasi</button>
+      
+      <button on:click={() => openExternalApp('https://script.google.com/macros/s/AKfycbwCyORIwdowJpgKUpSmeVp9bZSJT2Ohk5x6t37f0wOA2uAJK1Yf8p8Iy9RsljZrJTzK-w/exec')} class="flex items-center text-emerald-600 hover:text-emerald-800 hover:font-bold transition-all">
+          Pendaftaran & RM <span class="material-icons text-[12px] ml-1">open_in_new</span>
+      </button>
+
       <button on:click={() => switchView('app-ebilling')} class="hover:text-udemy-purple hover:font-bold transition-all">Administrasi & Kasir</button>
       <button on:click={() => switchView('app-jaga-input')} class="hover:text-udemy-purple hover:font-bold transition-all">Operasional Shift</button>
       <button on:click={() => switchView('app-sbar')} class="hover:text-udemy-purple hover:font-bold transition-all">Form SBAR</button>
       <button on:click={() => switchView('app-insiden')} class="hover:text-udemy-purple hover:font-bold transition-all">Laporan Insiden</button>
       <button on:click={() => switchView('visum')} class="hover:text-red-600 hover:font-bold transition-all">Laporan Visum</button>
   </div>
-
+  
   <main class="min-h-screen pb-20">
     
     {#if currentView === 'dashboard'}
