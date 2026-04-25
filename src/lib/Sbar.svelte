@@ -16,7 +16,7 @@
     ku: "", kes: "", gcs: "", tdSistol: "", tdDiastol: "", nadi: "", rr: "", suhu: "", spo2: "",
     terapi: "", assesment: "", usulan: "", instruksi: "",
     ttdPelapor: "", ttdPenerima: "", 
-    tbakTgl: "", tbakJam: "", tbakPenerima: "" 
+    tbakTgl: "", tbakJam: "", tbakPenerima: "", pemberiInstruksi: "" // 🔥 DITAMBAHKAN: state pemberiInstruksi
   };
 
   // ==========================================
@@ -79,6 +79,14 @@
     }, 8000);
   }
 
+  // 🔥 FUNGSI BARU: CETAK LANGSUNG DARI RIWAYAT 🔥
+  function cetakDariRiwayat(data) {
+    editDataSBAR(data); // Muat data ke form secara otomatis
+    setTimeout(() => {
+      cetakSBAR(); // Eksekusi cetak setelah data masuk ke form
+    }, 300); // Jeda sejenak agar UI sempat render
+  }
+
   // ==========================================
   // FUNGSI DATABASE SBAR KE SUPABASE
   // ==========================================
@@ -87,7 +95,9 @@
     isSaving = true;
 
     const tandaVitalTxt = `KU: ${form.ku || '-'}, Kes: ${form.kes || '-'}, GCS: ${form.gcs || '-'} | TD: ${form.tdSistol || '-'}/${form.tdDiastol || '-'} mmHg | Nadi: ${form.nadi || '-'} x/mnt | RR: ${form.rr || '-'} x/mnt | S: ${form.suhu || '-'} °C | SpO2: ${form.spo2 || '-'} %`;
-    const ttdPenerimaGabungan = `${form.ttdPenerima || ''}||${form.tbakTgl || ''}||${form.tbakJam || ''}||${form.tbakPenerima || ''}`;
+    
+    // 🔥 DITAMBAHKAN: pemberiInstruksi ke dalam gabungan string TTD
+    const ttdPenerimaGabungan = `${form.ttdPenerima || ''}||${form.tbakTgl || ''}||${form.tbakJam || ''}||${form.tbakPenerima || ''}||${form.pemberiInstruksi || ''}`;
 
     const payload = {
       tanggal: form.tanggal, jam: form.jam, pelapor: form.pelapor, penerima: form.penerima,
@@ -165,6 +175,7 @@
     form.tbakTgl = parts[1] || "";
     form.tbakJam = parts[2] || "";
     form.tbakPenerima = parts[3] || "";
+    form.pemberiInstruksi = parts[4] || form.ttdPenerima || ""; // 🔥 DITAMBAHKAN: Ambil data pemberi instruksi
 
     try {
       const tv = data.tandaVital || "";
@@ -238,7 +249,7 @@
                   <td class="pl-2.5 align-top">Pelapor<br><span class="text-[8pt]">(nama & jabatan)</span></td>
                   <td class="align-top">: <input type="text" bind:value={form.pelapor} class="sbar-input w-[80%]" placeholder="..."></td>
                   <td class="align-top">Penerima<br>Laporan</td>
-                  <td class="align-top">: <input type="text" bind:value={form.penerima} class="sbar-input w-[80%]" placeholder="..."></td>
+                  <td class="align-top">: <input type="text" bind:value={form.penerima} on:input={() => { form.ttdPenerima = form.penerima; form.pemberiInstruksi = form.penerima; }} class="sbar-input w-[80%]" placeholder="..."></td>
                 </tr>
               </tbody>
             </table>
@@ -347,7 +358,8 @@
                             <span class="text-[9pt]">Paraf pelapor,</span><br><br><br><br><input type="text" bind:value={form.ttdPelapor} class="sbar-input sbar-inline-input text-center w-[80%] border-b border-dotted border-black text-[9pt]" placeholder="Nama">
                           </td>
                           <td width="50%" class="text-center p-1.5 align-top">
-                            <span class="text-[9pt]">Paraf penerima<br>laporan,</span><br><br><br><input type="text" bind:value={form.ttdPenerima} class="sbar-input sbar-inline-input text-center w-[80%] border-b border-dotted border-black text-[9pt]" placeholder="Nama">
+                            <span class="text-[9pt]">Paraf penerima<br>laporan,</span><br><br><br>
+                            <input type="text" bind:value={form.ttdPenerima} class="sbar-input sbar-inline-input text-center w-[80%] border-b border-dotted border-black text-[9pt]" placeholder="Nama">
                           </td>
                         </tr>
                       </tbody>
@@ -372,7 +384,7 @@
                               <tbody><tr><td width="35%">Tanggal</td><td class="text-gray-400">: ......................</td></tr><tr><td>Jam</td><td class="text-gray-400">: ......................</td></tr></tbody>
                             </table>
                             <div class="text-center text-[8pt] mt-2">Pemberi Instruksi,</div><br><br>
-                            <div class="text-center"><input type="text" class="sbar-input sbar-inline-input text-center w-[80%] border-b border-dotted border-black" placeholder="................................"></div>
+                            <div class="text-center"><input type="text" bind:value={form.pemberiInstruksi} class="sbar-input sbar-inline-input text-center w-[80%] border-b border-dotted border-black" placeholder="................................"></div>
                           </td>
                         </tr>
                       </tbody>
@@ -446,6 +458,7 @@
                   </td>
                   <td class="p-3 align-top text-center space-y-2">
                     <button on:click={() => editDataSBAR(it)} class="text-xs font-bold text-[#a435f0] hover:underline w-full text-center block">Edit Data</button>
+                    <button on:click={() => cetakDariRiwayat(it)} class="text-xs font-bold text-blue-600 hover:underline w-full text-center block">Print PDF</button>
                     <button on:click={() => hapusSBAR(it.row)} class="text-xs font-bold text-red-600 hover:underline w-full text-center block">Hapus</button>
                   </td>
                 </tr>
@@ -625,7 +638,7 @@
                             <tbody><tr><td width="35%">Tanggal</td><td class="text-gray-400">: ......................</td></tr><tr><td>Jam</td><td class="text-gray-400">: ......................</td></tr></tbody>
                           </table>
                           <div class="text-center text-[8pt] mt-2">Pemberi Instruksi,</div><br><br>
-                          <div class="text-center"><span class="teks-cetak sbar-inline-input text-center w-[80%] border-b border-dotted border-black text-gray-400">................................</span></div>
+                          <div class="text-center"><span class="teks-cetak sbar-inline-input text-center w-[80%] border-b border-dotted border-black">{form.pemberiInstruksi || '................................'}</span></div>
                         </td>
                       </tr>
                     </tbody>

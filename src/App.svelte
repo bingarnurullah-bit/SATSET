@@ -22,22 +22,42 @@
     // KUNCI KEAMANAN: Paksa Firebase masuk mode SESSION
     // Tiket login akan otomatis hangus saat browser/tab ditutup
     // ========================================================
-    window.firebase.auth().setPersistence(window.firebase.auth.Auth.Persistence.SESSION)
-      .then(() => {
-        // Setelah mode aman aktif, baru cek status login
-        window.firebase.auth().onAuthStateChanged((u) => {
-          user = u;
-          if(user) muatMasterData(); // Kalau login berhasil, langsung ambil data
-          
-          setTimeout(() => {
-            if(window.lucide) window.lucide.createIcons();
-          }, 100);
+    if (window.firebase) {
+      window.firebase.auth().setPersistence(window.firebase.auth.Auth.Persistence.SESSION)
+        .then(() => {
+          // Setelah mode aman aktif, baru cek status login
+          window.firebase.auth().onAuthStateChanged((u) => {
+            user = u;
+            if(user) muatMasterData(); // Kalau login berhasil, langsung ambil data
+            
+            setTimeout(() => {
+              if(window.lucide) window.lucide.createIcons();
+            }, 100);
+          });
+        })
+        .catch((error) => {
+          console.error("Gagal mengaktifkan gembok sesi Firebase:", error);
         });
-      })
-      .catch((error) => {
-        console.error("Gagal mengaktifkan gembok sesi Firebase:", error);
-      });
+    }
+
+    // 🔥 FITUR 1: SISTEM NAVIGASI (AGAR TOMBOL BACK BERFUNGSI) 🔥
+    // Baca hash URL saat web pertama dibuka (Cegah ke-reset ke dashboard)
+    const hash = window.location.hash.replace('#', '');
+    if (hash) {
+      currentView = hash;
+    }
+
+    // Dengarkan saat tombol Back ditekan di HP/Browser
+    window.addEventListener('popstate', handlePopState);
   });
+
+  function handlePopState(event) {
+    const hash = window.location.hash.replace('#', '');
+    // Jika ada URL di atas, pindah ke sana, jika kosong kembali ke dashboard
+    currentView = hash ? hash : 'dashboard';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => { if(window.lucide) window.lucide.createIcons(); }, 50);
+  }
 
   // Fungsi ambil data dari Google Sheets (Database Mas)
   async function muatMasterData() {
@@ -52,22 +72,38 @@
     }
   }
 
+  // 🔥 UPDATE FUNGSI SWITCH: Pindah halaman + Catat ke Riwayat Browser 🔥
   function switchView(target) {
     currentView = target;
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => {
         if(window.lucide) window.lucide.createIcons();
     }, 50);
+
+    // Beritahu browser bahwa kita "Pindah Halaman"
+    window.history.pushState(null, '', `#${target}`);
+  }
+
+  // Fungsi Pindah ke Aplikasi Eksternal
+  function openExternalApp(url) {
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   function logout() {
-    window.firebase.auth().signOut();
+    if (window.firebase) {
+      window.firebase.auth().signOut().then(() => {
+        // Bersihkan URL atas agar rapi saat login kembali
+        window.history.replaceState(null, '', window.location.pathname);
+      });
+    }
   }
 </script>
 
-{#if !user}
+{#if !user && currentView !== 'app-insiden'}
   <Login />
+
 {:else}
+  {#if user}
   <header class="h-20 flex items-center px-6 lg:px-12 border-b border-gray-200 sticky top-0 bg-white z-50 shadow-sm no-print">
       <div on:click={() => switchView('dashboard')} class="flex items-center mr-8 cursor-pointer group">
           <div class="w-10 h-10 bg-udemy-black text-white rounded-lg flex items-center justify-center mr-3 group-hover:bg-udemy-purple transition-colors">
@@ -97,19 +133,36 @@
       </div>
   </header>
 
-<div class="hidden md:flex justify-center space-x-8 py-3 shadow-[0_4px_6px_-6px_rgba(0,0,0,0.1)] text-sm text-udemy-gray bg-white relative z-40 no-print">
-      <button on:click={() => switchView('dashboard')} class="hover:text-udemy-purple hover:font-bold transition-all">Semua Aplikasi</button>
+  <div class="hidden md:flex justify-center space-x-8 py-3 shadow-[0_4px_6px_-6px_rgba(0,0,0,0.1)] text-sm text-udemy-gray bg-white relative z-40 no-print border-b">
+      <button on:click={() => switchView('dashboard')} class="pb-1 transition-all {currentView === 'dashboard' ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
+        Semua Aplikasi
+      </button>
       
-      <button on:click={() => openExternalApp('https://script.google.com/macros/s/AKfycbwCyORIwdowJpgKUpSmeVp9bZSJT2Ohk5x6t37f0wOA2uAJK1Yf8p8Iy9RsljZrJTzK-w/exec')} class="flex items-center text-emerald-600 hover:text-emerald-800 hover:font-bold transition-all">
+      <button on:click={() => openExternalApp('https://script.google.com/macros/s/AKfycbwCyORIwdowJpgKUpSmeVp9bZSJT2Ohk5x6t37f0wOA2uAJK1Yf8p8Iy9RsljZrJTzK-w/exec')} class="pb-1 flex items-center text-emerald-600 hover:text-emerald-800 hover:font-bold transition-all border-b-2 border-transparent">
           Pendaftaran & RM <span class="material-icons text-[12px] ml-1">open_in_new</span>
       </button>
 
-      <button on:click={() => switchView('app-ebilling')} class="hover:text-udemy-purple hover:font-bold transition-all">Administrasi & Kasir</button>
-      <button on:click={() => switchView('app-jaga-input')} class="hover:text-udemy-purple hover:font-bold transition-all">Operasional Shift</button>
-      <button on:click={() => switchView('app-sbar')} class="hover:text-udemy-purple hover:font-bold transition-all">Form SBAR</button>
-      <button on:click={() => switchView('app-insiden')} class="hover:text-udemy-purple hover:font-bold transition-all">Laporan Insiden</button>
-      <button on:click={() => switchView('visum')} class="hover:text-red-600 hover:font-bold transition-all">Laporan Visum</button>
+      <button on:click={() => switchView('app-ebilling')} class="pb-1 transition-all {currentView === 'app-ebilling' ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
+        Administrasi & Kasir
+      </button>
+
+      <button on:click={() => switchView('app-jaga-input')} class="pb-1 transition-all {currentView.includes('app-jaga') ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
+        Operasional Shift
+      </button>
+
+      <button on:click={() => switchView('app-sbar')} class="pb-1 transition-all {currentView === 'app-sbar' ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
+        Form SBAR
+      </button>
+
+      <button on:click={() => switchView('app-insiden')} class="pb-1 transition-all {currentView === 'app-insiden' ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
+        Laporan Insiden
+      </button>
+
+      <button on:click={() => switchView('visum')} class="pb-1 transition-all {currentView === 'visum' ? 'text-red-600 font-bold border-b-2 border-red-600' : 'hover:text-red-600 hover:font-bold border-b-2 border-transparent'}">
+        Laporan Visum
+      </button>
   </div>
+  {/if}
   
   <main class="min-h-screen pb-20">
     
