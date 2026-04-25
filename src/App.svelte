@@ -84,11 +84,6 @@
     window.history.pushState(null, '', `#${target}`);
   }
 
-  // Fungsi Pindah ke Aplikasi Eksternal
-  function openExternalApp(url) {
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }
-
   function logout() {
     if (window.firebase) {
       window.firebase.auth().signOut().then(() => {
@@ -101,104 +96,92 @@
 
 {#if !user && currentView !== 'app-insiden'}
   <Login />
-
 {:else}
+  
   {#if user}
   <header class="h-20 flex items-center px-6 lg:px-12 border-b border-gray-200 sticky top-0 bg-white z-50 shadow-sm no-print">
-      <div on:click={() => switchView('dashboard')} class="flex items-center mr-8 cursor-pointer group">
+      <a href="#dashboard" on:click|preventDefault={() => switchView('dashboard')} class="flex items-center mr-8 cursor-pointer group">
           <div class="w-10 h-10 bg-udemy-black text-white rounded-lg flex items-center justify-center mr-3 group-hover:bg-udemy-purple transition-colors">
               <i data-lucide="zap" class="w-6 h-6 fill-current"></i>
           </div>
           <h1 class="font-serif-satset text-3xl font-extrabold tracking-tight group-hover:text-udemy-purple transition-colors">SATSET</h1>
-      </div>
+      </a>
 
       <div class="hidden md:flex flex-1 max-w-3xl relative group">
           <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <i data-lucide="search" class="w-5 h-5 text-gray-400 group-focus-within:text-udemy-purple transition-colors"></i>
           </div>
           <input type="text" placeholder="Cari Aplikasi (misal: 'Billing', 'Laporan Jaga', 'SBAR')...." 
-              class="w-full bg-udemy-light border border-gray-300 rounded-full py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-udemy-purple focus:border-transparent transition-all text-sm placeholder-gray-500">
+              class="w-full bg-udemy-light border border-gray-300 rounded-full py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-udemy-purple focus:border-transparent transition-all text-sm placeholder-gray-500" />
       </div>
 
       <div class="flex items-center ml-auto space-x-6">
-          <button on:click={() => switchView('dashboard')} class="hidden lg:block text-sm font-medium hover:text-udemy-purple transition-colors">Aplikasi Saya</button>
+          <a href="#dashboard" on:click|preventDefault={() => switchView('dashboard')} class="hidden lg:block text-sm font-medium hover:text-udemy-purple transition-colors">Aplikasi Saya</a>
           
-          <button on:click={() => switchView('app-admin')} class="hidden md:flex items-center text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors">
+          <a href="#app-admin" on:click|preventDefault={() => switchView('app-admin')} class="hidden md:flex items-center text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors">
               <span class="material-icons text-sm mr-1">admin_panel_settings</span> Admin
-          </button>
+          </a>
 
-          <button on:click={logout} class="text-sm font-bold text-red-500 hover:text-red-700 transition-colors flex items-center">
+          <button on:click={logout} class="text-sm font-bold text-red-500 hover:text-red-700 transition-colors flex items-center cursor-pointer">
               <i data-lucide="log-out" class="w-4 h-4 mr-1"></i> Keluar
           </button>
       </div>
   </header>
 
   <div class="hidden md:flex justify-center space-x-8 py-3 shadow-[0_4px_6px_-6px_rgba(0,0,0,0.1)] text-sm text-udemy-gray bg-white relative z-40 no-print border-b">
-      <button on:click={() => switchView('dashboard')} class="pb-1 transition-all {currentView === 'dashboard' ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
+      <a href="#dashboard" on:click|preventDefault={() => switchView('dashboard')} class="pb-1 transition-all {currentView === 'dashboard' ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
         Semua Aplikasi
-      </button>
+      </a>
       
-      <button on:click={() => openExternalApp('https://script.google.com/macros/s/AKfycbwCyORIwdowJpgKUpSmeVp9bZSJT2Ohk5x6t37f0wOA2uAJK1Yf8p8Iy9RsljZrJTzK-w/exec')} class="pb-1 flex items-center text-emerald-600 hover:text-emerald-800 hover:font-bold transition-all border-b-2 border-transparent">
+      <a href="https://script.google.com/macros/s/AKfycbwCyORIwdowJpgKUpSmeVp9bZSJT2Ohk5x6t37f0wOA2uAJK1Yf8p8Iy9RsljZrJTzK-w/exec" target="_blank" rel="noopener noreferrer" class="pb-1 flex items-center text-emerald-600 hover:text-emerald-800 hover:font-bold transition-all border-b-2 border-transparent">
           Pendaftaran & RM <span class="material-icons text-[12px] ml-1">open_in_new</span>
-      </button>
+      </a>
 
-      <button on:click={() => switchView('app-ebilling')} class="pb-1 transition-all {currentView === 'app-ebilling' ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
+      <a href="#app-ebilling" on:click|preventDefault={() => switchView('app-ebilling')} class="pb-1 transition-all {currentView === 'app-ebilling' ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
         Administrasi & Kasir
-      </button>
+      </a>
 
-      <button on:click={() => switchView('app-jaga-input')} class="pb-1 transition-all {currentView.includes('app-jaga') ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
+      <a href="#app-jaga-input" on:click|preventDefault={() => switchView('app-jaga-input')} class="pb-1 transition-all {currentView.includes('app-jaga') ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
         Operasional Shift
-      </button>
+      </a>
 
-      <button on:click={() => switchView('app-sbar')} class="pb-1 transition-all {currentView === 'app-sbar' ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
+      <a href="#app-sbar" on:click|preventDefault={() => switchView('app-sbar')} class="pb-1 transition-all {currentView === 'app-sbar' ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
         Form SBAR
-      </button>
+      </a>
 
-      <button on:click={() => switchView('app-insiden')} class="pb-1 transition-all {currentView === 'app-insiden' ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
+      <a href="#app-insiden" on:click|preventDefault={() => switchView('app-insiden')} class="pb-1 transition-all {currentView === 'app-insiden' ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
         Laporan Insiden
-      </button>
+      </a>
 
-      <button on:click={() => switchView('visum')} class="pb-1 transition-all {currentView === 'visum' ? 'text-red-600 font-bold border-b-2 border-red-600' : 'hover:text-red-600 hover:font-bold border-b-2 border-transparent'}">
+      <a href="#visum" on:click|preventDefault={() => switchView('visum')} class="pb-1 transition-all {currentView === 'visum' ? 'text-red-600 font-bold border-b-2 border-red-600' : 'hover:text-red-600 hover:font-bold border-b-2 border-transparent'}">
         Laporan Visum
-      </button>
+      </a>
   </div>
   {/if}
   
   <main class="min-h-screen pb-20">
-    
     {#if currentView === 'dashboard'}
       <Dashboard {switchView} />
-
     {:else if currentView === 'app-ebilling'}
       <EBilling {switchView} />
-
     {:else if currentView === 'app-jaga-input'}
       <LaporanJaga {switchView} activeTab="input" />
-
     {:else if currentView === 'app-jaga-rekap'}
       <LaporanJaga {switchView} activeTab="rekap" />
-
     {:else if currentView === 'app-sbar'}
       <Sbar {switchView} />
-
     {:else if currentView === 'contact'}
       <div class="p-10 text-center animate-fade-in">
         <h2 class="text-2xl font-bold text-navy">Pusat Bantuan (Sedang Proses Migrasi)</h2>
       </div>
-
     {:else if currentView === 'app-insiden'}
       <Insiden {switchView} />
-
     {:else if currentView === 'riwayat'} 
       <Riwayat {switchView} />
-
     {:else if currentView === 'app-admin'}
       <Admin {switchView} />
-
     {:else if currentView === 'visum'}
       <Visum {switchView} />
-    
     {/if}
-
   </main>
 {/if}
