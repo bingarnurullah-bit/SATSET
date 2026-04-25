@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { supabase } from './supabase.js';
+  import AuthAdmin from './AuthAdmin.svelte'; // 👈 IMPORT MODAL AUTH ADMIN
 
   export let switchView;
   export let activeTab = 'input'; 
@@ -21,6 +22,7 @@
   // =====================================
   // MASTER DATA OBAT & RADAR
   // =====================================
+  let mapStokObat = {}; // 🔥 DITAMBAHKAN: Untuk menyimpan stok asli tiap obat
   let jagaObatUmum = [];
   let jagaObatKaber = [];
   
@@ -63,11 +65,16 @@
   });
 
   // =====================================
-  // STATE: BUKU STELING OBAT
+  // STATE: BUKU STELING OBAT 
   // =====================================
-  let filterStelingMode = 'HARIAN'; 
+  let stelingStartDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]; 
+  let stelingEndDate = new Date().toISOString().split('T')[0]; 
+  let stelingFilterObat = "SEMUA"; 
   let stelingItems = [];
   let isStelingLoading = false;
+
+  let isPurgingSteling = false;
+  let showPurgeStelingModal = false;
 
   // =====================================
   // INISIALISASI
@@ -88,12 +95,20 @@
   // =====================================
   async function fetchObatMaster() {
     try {
-      const { data, error } = await supabase.from('stok_obat_jaga').select('nama').order('nama', { ascending: true });
+      // 🔥 UPDATE: Menarik data jumlah (stok) juga untuk PDF Saldo Awal
+      const { data, error } = await supabase.from('stok_obat_jaga').select('nama, jumlah').order('nama', { ascending: true });
       if (error) throw error;
       if (data) {
-        const daftarNama = [...new Set(data.map(o => o.nama).filter(Boolean))];
-        jagaObatUmum = [...daftarNama]; 
-        jagaObatKaber = [...daftarNama];
+        const daftarNama = [];
+        data.forEach(d => {
+           if (d.nama) {
+               daftarNama.push(d.nama);
+               mapStokObat[d.nama] = d.jumlah || 0; // Simpan stok riil saat ini
+           }
+        });
+        const unikNama = [...new Set(daftarNama)];
+        jagaObatUmum = [...unikNama]; 
+        jagaObatKaber = [...unikNama];
       }
     } catch (e) { console.error("Gagal memuat daftar obat:", e.message); }
   }
@@ -118,12 +133,8 @@
     jagaBiaya = v.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   }
 
-  // =====================================
-  // PERBAIKAN: MENCARI NAMA OBAT YANG SAMA PERSIS
-  // =====================================
   function addJagaItem() {
     if (!obatInput) return;
-    
     const exactObat = activeObatList.find(o => o.trim().toLowerCase() === obatInput.trim().toLowerCase());
     const finalObatName = exactObat ? exactObat : obatInput.trim().toUpperCase();
     const isStok = !!exactObat;
@@ -156,24 +167,16 @@
         await supabase.from('kendala_shift').upsert({ shift_id: shiftID, kendala: newKendala });
       }
 
-      // =================================================================
-      // MESIN PEMOTONG STOK & PENCATAT STELING
-      // =================================================================
       for (const item of itemsToSave) {
         if (item.obat !== "-" && item.status === "STOK") {
           const { data: obatDiLaci } = await supabase.from('stok_obat_jaga').select('jumlah').eq('nama', item.obat).single();
-
           if (obatDiLaci) {
             const sisaBaru = obatDiLaci.jumlah - item.jumlah;
-            
             const { error: errUpdate } = await supabase.from('stok_obat_jaga').update({ jumlah: sisaBaru }).eq('nama', item.obat);
             
             if (!errUpdate) {
               await supabase.from('log_steling_obat').insert({
-                nama_obat: item.obat, 
-                jenis_mutasi: 'KELUAR',
-                jumlah: item.jumlah,
-                sisa_stok: sisaBaru,
+                nama_obat: item.obat, jenis_mutasi: 'KELUAR', jumlah: item.jumlah, sisa_stok: sisaBaru,
                 keterangan: `Keluar UGD/KABER: ${jagaNama.toUpperCase()}`
               });
             }
@@ -191,31 +194,38 @@
   }
 
   // =====================================
-  // FUNGSI BUKU STELING & CETAK PDF
+  // FUNGSI BUKU STELING
   // =====================================
   async function tarikDataSteling() {
+    if (!stelingStartDate || !stelingEndDate) return;
     isStelingLoading = true;
+    
     try {
-      const skr = new Date();
-      let tglFilter = new Date();
-
-      if (filterStelingMode === 'HARIAN') {
-        tglFilter.setHours(0, 0, 0, 0); 
-      } else if (filterStelingMode === 'BULANAN') {
-        tglFilter = new Date(skr.getFullYear(), skr.getMonth(), 1); 
-      } else if (filterStelingMode === 'TAHUNAN') {
-        tglFilter = new Date(skr.getFullYear(), 0, 1); 
-      }
-
-      const isoDate = tglFilter.toISOString();
-      const { data, error } = await supabase
-        .from('log_steling_obat')
-        .select('*')
-        .gte('created_at', isoDate)
+      let query = supabase.from('log_steling_obat').select('*')
+        .gte('created_at', `${stelingStartDate}T00:00:00`)
+        .lte('created_at', `${stelingEndDate}T23:59:59`)
         .order('created_at', { ascending: false });
 
+      if (stelingFilterObat !== "SEMUA") {
+        query = query.eq('nama_obat', stelingFilterObat);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      stelingItems = data || [];
+      
+      stelingItems = (data || []).map((item, i, arr) => {
+        const dt = new Date(item.created_at);
+        const currBulanTahun = `${dt.getMonth()}-${dt.getFullYear()}`;
+        let isNewMonth = false;
+        
+        if (i > 0) {
+           const prevDt = new Date(arr[i-1].created_at);
+           const prevBulanTahun = `${prevDt.getMonth()}-${prevDt.getFullYear()}`;
+           isNewMonth = currBulanTahun !== prevBulanTahun;
+        }
+        return { ...item, isNewMonth };
+      });
+      
     } catch (e) {
       console.error("Gagal muat steling:", e.message);
     } finally {
@@ -223,86 +233,144 @@
     }
   }
 
-// =====================================
-  // FUNGSI EKSPOR PDF MURNI (ANTI PECAH)
-  // =====================================
-  function cetakStelingPDF() {
+  async function jalankanPurgeSteling() {
+    isPurgingSteling = true;
     try {
-      if (stelingItems.length === 0) return alert("Data steling kosong! Tidak ada yang bisa dicetak.");
+      const { error } = await supabase.from('log_steling_obat').delete().neq('id', 0);
+      if (error) throw error;
+      alert("🔥 EKSEKUSI BERHASIL!\nDatabase Buku Steling Obat telah dikosongkan.");
+      stelingItems = [];
+    } catch (err) {
+      alert("Gagal menghapus database: " + err.message);
+    } finally {
+      isPurgingSteling = false;
+    }
+  }
 
-      // Deteksi dini jika mesin PDF di index.html belum terbaca
-      if (!window.jspdf) {
-        return alert("🚨 GAGAL: Mesin PDF belum siap! Pastikan Komandan sudah menaruh script jsPDF di file index.html lalu Refresh (F5) halaman ini.");
+  // =====================================
+  // 🔥 FUNGSI PDF FINAL (SALDO AWAL) 🔥
+  // =====================================
+  async function cetakStelingPDF(modeArsipLengkap = false) {
+    try {
+      if (!window.jspdf) return alert("🚨 GAGAL: Mesin PDF belum siap! Refresh (F5) halaman ini.");
+
+      if (modeArsipLengkap) {
+          isStelingLoading = true;
+          const { data: semuaSteling, error: errSteling } = await supabase.from('log_steling_obat').select('*').order('created_at', { ascending: false });
+          if (errSteling) throw errSteling;
+          stelingItems = semuaSteling || [];
+          isStelingLoading = false;
+      } else {
+          await tarikDataSteling(); 
       }
 
       const { jsPDF } = window.jspdf;
-      const doc = new jsPDF('p', 'mm', 'a4'); // Kertas A4 Portrait
+      const doc = new jsPDF('p', 'mm', 'a4');
 
-      // Kop Surat Resmi
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text("PEMERINTAH KABUPATEN MALANG - DINAS KESEHATAN", 105, 15, { align: "center" });
-      
-      doc.setFontSize(16);
-      doc.text("UPT PUSKESMAS PONCOKUSUMO", 105, 22, { align: "center" });
-      
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.text("Buku Catatan Mutasi Laci Jaga (Steling Obat)", 105, 28, { align: "center" });
-      
-      doc.setFont("helvetica", "italic");
-      doc.text(`Periode Laporan: ${filterStelingMode}`, 105, 34, { align: "center" });
-
-      // Garis Pembatas
-      doc.setLineWidth(0.5);
-      doc.line(14, 38, 196, 38); 
-
-      // Rakit Data Tabel
-      const tableColumn = ["Waktu", "Nama Obat", "Mutasi", "Qty", "Sisa", "Keterangan"];
-      const tableRows = [];
-
-      stelingItems.forEach(item => {
-        const dt = new Date(item.created_at);
-        const wkt = `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth()+1).toString().padStart(2, '0')}/${dt.getFullYear()}\n${dt.getHours().toString().padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+      const buatKopSurat = (namaItem) => {
+        doc.setFontSize(14); doc.setFont("helvetica", "bold");
+        doc.text("PEMERINTAH KABUPATEN MALANG - DINAS KESEHATAN", 105, 15, { align: "center" });
+        doc.setFontSize(16); doc.text("UPT PUSKESMAS PONCOKUSUMO", 105, 22, { align: "center" });
+        doc.setFontSize(11); doc.setFont("helvetica", "normal");
+        doc.text("Buku Catatan Mutasi Laci Jaga (Steling Obat)", 105, 28, { align: "center" });
         
-        tableRows.push([
-          wkt,
-          item.nama_obat,
-          item.jenis_mutasi,
-          item.jumlah.toString(),
-          item.sisa_stok.toString(),
-          item.keterangan || "-"
-        ]);
-      });
+        doc.setFont("helvetica", "italic");
+        let teksPeriode = modeArsipLengkap ? "Periode: SELURUH RIWAYAT (ARSIP LENGKAP)" : `Periode: ${stelingStartDate} s/d ${stelingEndDate}`;
+        doc.text(teksPeriode, 105, 34, { align: "center" });
+        
+        doc.setFont("helvetica", "bold");
+        doc.text(`Item Obat/BMHP: ${namaItem}`, 105, 40, { align: "center" });
+        doc.setLineWidth(0.5); doc.line(14, 43, 196, 43); 
+      };
 
-      // Cetak Tabel Otomatis
-      doc.autoTable({
-        head: [tableColumn],
-        body: tableRows,
-        startY: 45,
-        theme: 'grid',
+      const tableColumn = ["Waktu", "Mutasi", "Qty", "Sisa Stok", "Keterangan"];
+      const autoTableConfig = {
+        startY: 48, theme: 'grid',
         headStyles: { fillColor: [28, 29, 31], textColor: 255, halign: 'center' },
         bodyStyles: { textColor: 20 },
         columnStyles: {
-          0: { cellWidth: 25, halign: 'center' },
-          1: { cellWidth: 50 },
+          0: { cellWidth: 30, halign: 'center' },
+          1: { cellWidth: 25, halign: 'center', fontStyle: 'bold' },
           2: { cellWidth: 20, halign: 'center', fontStyle: 'bold' },
-          3: { cellWidth: 15, halign: 'center', fontStyle: 'bold' },
-          4: { cellWidth: 15, halign: 'center', fontStyle: 'bold' },
-          5: { cellWidth: 'auto' }
+          3: { cellWidth: 25, halign: 'center', fontStyle: 'bold' },
+          4: { cellWidth: 'auto' }
         },
         styles: { fontSize: 9, cellPadding: 3 },
         didParseCell: function(data) {
-          // Pewarnaan Otomatis: Merah = Keluar, Hijau = Masuk
-          if (data.section === 'body' && data.column.index === 2) {
+          if (data.section === 'body' && data.column.index === 1) {
             if (data.cell.raw === 'KELUAR') data.cell.styles.textColor = [220, 38, 38]; 
             if (data.cell.raw === 'MASUK') data.cell.styles.textColor = [22, 163, 74];  
+            if (data.cell.raw === 'SALDO AWAL') data.cell.styles.textColor = [37, 99, 235]; // Warna Biru untuk Saldo Awal 
           }
         }
+      };
+
+      // Siapkan Daftar Obat yang akan dicetak
+      let daftarObatCetak = [];
+      const dataDikelompokkan = {};
+
+      if (modeArsipLengkap || stelingFilterObat === "SEMUA") {
+          daftarObatCetak = [...listObatDataAll].sort();
+      } else {
+          daftarObatCetak = [stelingFilterObat];
+      }
+
+      // Siapkan keranjang kosong untuk tiap obat
+      daftarObatCetak.forEach(obat => { dataDikelompokkan[obat] = []; });
+
+      // Masukkan riwayat ke keranjang masing-masing obat
+      stelingItems.forEach(item => {
+          if (item.nama_obat && dataDikelompokkan[item.nama_obat]) {
+              dataDikelompokkan[item.nama_obat].push(item);
+          }
       });
 
-      // Unduh File
-      doc.save(`Laporan_Steling_${filterStelingMode}_${new Date().getTime()}.pdf`);
+      // Proses Cetak per Obat
+      daftarObatCetak.forEach((namaObat, index) => {
+        if (index > 0) doc.addPage();
+        buatKopSurat(namaObat);
+
+        // Reverse agar urutan dari terlama ke terbaru (kronologis)
+        const riwayatAsc = [...dataDikelompokkan[namaObat]].reverse();
+
+        // HITUNG SALDO AWAL
+        let stokAwal = 0;
+        if (riwayatAsc.length > 0) {
+            const pertama = riwayatAsc[0];
+            // Jika mutasi pertama adalah Keluar, stok awal = sisa + yg keluar
+            stokAwal = pertama.jenis_mutasi === 'KELUAR' 
+                ? Number(pertama.sisa_stok) + Number(pertama.jumlah)
+                : Number(pertama.sisa_stok) - Number(pertama.jumlah);
+        } else {
+            // Jika tidak ada mutasi, ambil jumlah murni dari tabel Master Jaga
+            stokAwal = mapStokObat[namaObat] || 0;
+        }
+
+        const tableRows = [];
+        
+        // 1. Suntikkan Baris Saldo Awal
+        tableRows.push([
+            modeArsipLengkap ? "-" : stelingStartDate, 
+            "SALDO AWAL", 
+            "-", 
+            stokAwal.toString(), 
+            "Stok awal periode berjalan"
+        ]);
+
+        // 2. Suntikkan Baris Riwayat (Jika Ada)
+        if (riwayatAsc.length > 0) {
+            riwayatAsc.forEach(item => {
+              const dt = new Date(item.created_at);
+              const wkt = `${dt.getDate().toString().padStart(2, '0')}/${(dt.getMonth()+1).toString().padStart(2, '0')}/${dt.getFullYear()}\n${dt.getHours().toString().padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+              tableRows.push([ wkt, item.jenis_mutasi, item.jumlah.toString(), item.sisa_stok.toString(), item.keterangan || "-" ]);
+            });
+        }
+
+        doc.autoTable({ ...autoTableConfig, head: [tableColumn], body: tableRows });
+      });
+
+      let namaFile = modeArsipLengkap ? "Arsip_Tahunan_Semua_Obat" : `Steling_${stelingFilterObat.replace(/\s+/g, '_')}`;
+      doc.save(`${namaFile}_${new Date().getTime()}.pdf`);
       
     } catch (error) {
       alert("⚠️ Terjadi kesalahan saat membuat PDF: " + error.message);
@@ -383,9 +451,6 @@
 
   function kirimWA() { window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(txtLaporan), "_blank"); }
 
-  // =====================================
-  // MODAL EDIT & TAMBAH SUSULAN
-  // =====================================
   function bukaModalEdit(it) {
     editRow = it.row; editNama = (it.nama !== "-" ? it.nama : ""); editRM = (it.rm !== "-" ? it.rm : ""); editTerapi = (it.terapi !== "-" ? it.terapi : "");
     editObat = (it.rawItems && it.rawItems.length > 0 && it.rawItems[0].obat !== "-" ? it.rawItems[0].obat : ""); editJumlah = (it.rawItems && it.rawItems.length > 0 && it.rawItems[0].jumlah !== 0 ? it.rawItems[0].jumlah : ""); showModalEdit = true;
@@ -436,9 +501,6 @@
     } catch(e) { alert("Error jaringan."); } finally { isSavingAdd = false; }
   }
 
-  // =====================================
-  // FUNGSI REKAP OBAT TOTAL
-  // =====================================
   function setHariIniObat() { const d = new Date().toISOString().split('T')[0]; filterMulaiObat = d; filterSelesaiObat = d; tarikDataObat(); }
   function setBulanIniObat() { const date = new Date(); const y = date.getFullYear(); const m = String(date.getMonth() + 1).padStart(2, '0'); const d = String(new Date(y, date.getMonth() + 1, 0).getDate()).padStart(2, '0'); filterMulaiObat = `${y}-${m}-01`; filterSelesaiObat = `${y}-${m}-${d}`; tarikDataObat(); }
 
@@ -466,6 +528,14 @@
     } catch(e) { alert("Gagal memuat rekap obat."); } finally { isRekapLoading = false; }
   }
 </script>
+
+<AuthAdmin 
+  bind:showModal={showPurgeStelingModal} 
+  onSuccess={jalankanPurgeSteling} 
+  judulAksi="Otorisasi Kosongkan Steling"
+  pesanPeringatan="Tindakan ini akan menghapus <b class='text-red-600'>SELURUH</b> riwayat Mutasi Obat secara permanen. Pastikan Anda telah mengunduh PDF untuk arsip."
+  hanyaAdmin={true} 
+/>
 
 <div class="animate-fade-in bg-[#eef2f5] min-h-screen pb-20">
   
@@ -568,22 +638,41 @@
     <div class="max-w-6xl mx-auto px-4 animate-fade-in">
       <div class="jaga-card p-6">
         <h2 class="font-black text-2xl text-[#1c1d1f] mb-2 flex items-center no-print"><span class="material-icons mr-2 text-emerald-600 text-3xl">receipt_long</span> Buku Catatan Steling Obat</h2>
-        <p class="text-sm text-gray-500 mb-6 no-print">Merekam semua riwayat mutasi dari Laci Jaga (Maksimal penyimpanan 1 tahun).</p>
+        <p class="text-sm text-gray-500 mb-6 no-print">Merekam riwayat mutasi Laci Jaga. Fitur ini dirancang khusus untuk kemudahan pelacakan dan audit.</p>
         
-        <div class="bg-[#f7f9fa] p-5 rounded-lg border border-[#d1d7dc] mb-6 flex flex-col md:flex-row gap-4 items-end justify-between no-print">
-          <div>
-            <span class="jaga-label mt-0 mb-1 text-xs">Pilih Rentang Laporan</span>
-            <div class="flex gap-2">
-              <button on:click={() => {filterStelingMode = 'HARIAN'; tarikDataSteling()}} class="{filterStelingMode === 'HARIAN' ? 'bg-emerald-600 text-white' : 'bg-white border'} font-bold px-4 py-2 rounded text-sm transition-colors">Harian</button>
-              <button on:click={() => {filterStelingMode = 'BULANAN'; tarikDataSteling()}} class="{filterStelingMode === 'BULANAN' ? 'bg-emerald-600 text-white' : 'bg-white border'} font-bold px-4 py-2 rounded text-sm transition-colors">Bulanan</button>
-              <button on:click={() => {filterStelingMode = 'TAHUNAN'; tarikDataSteling()}} class="{filterStelingMode === 'TAHUNAN' ? 'bg-emerald-600 text-white' : 'bg-white border'} font-bold px-4 py-2 rounded text-sm transition-colors">Tahunan</button>
-            </div>
-          </div>
-          <button on:click={cetakStelingPDF} class="bg-[#1c1d1f] text-white hover:bg-black font-bold px-5 py-2.5 rounded text-sm flex items-center transition-colors shadow-md">
-            <span class="material-icons text-sm mr-2">print</span> Cetak Laporan PDF
-          </button>
-        </div>
+<div class="bg-[#f7f9fa] p-5 rounded-lg border border-[#d1d7dc] mb-6 flex flex-col lg:flex-row gap-4 items-end justify-between no-print">
+  
+  <div class="flex flex-col md:flex-row gap-4 w-full">
+    <div class="flex-1">
+      <span class="jaga-label mt-0 mb-1 text-xs">Tanggal Mulai</span>
+      <input type="date" bind:value={stelingStartDate} class="jaga-input py-2 w-full">
+    </div>
+    
+    <div class="flex-1">
+      <span class="jaga-label mt-0 mb-1 text-xs">Tanggal Selesai</span>
+      <input type="date" bind:value={stelingEndDate} class="jaga-input py-2 w-full">
+    </div>
+    
+    <div class="flex-1">
+      <span class="jaga-label mt-0 mb-1 text-xs">Filter Spesifik Obat</span>
+      <select bind:value={stelingFilterObat} class="jaga-input py-2 font-bold w-full">
+        <option value="SEMUA">-- SEMUA OBAT --</option>
+        {#each listObatDataAll as obat}
+           <option value={obat}>{obat}</option>
+        {/each}
+      </select>
+    </div>
 
+    <button on:click={tarikDataSteling} class="bg-emerald-600 text-white hover:bg-emerald-700 font-bold px-5 rounded text-sm flex items-center justify-center transition-colors shadow-md mt-auto mb-[1px] h-[42px] flex-none md:w-auto w-full">
+      <span class="material-icons text-sm mr-2 {isStelingLoading ? 'animate-spin' : ''}">search</span> Terapkan Filter
+    </button>
+  </div>
+  
+  <button on:click={cetakStelingPDF} class="bg-[#1c1d1f] text-white hover:bg-black font-bold px-6 rounded text-sm flex items-center justify-center transition-colors shadow-md flex-none w-full lg:w-auto h-[42px] mb-[1px]">
+    <span class="material-icons text-sm mr-2">print</span> Cetak PDF
+  </button>
+
+</div>
         <div class="overflow-x-auto border border-[#d1d7dc] rounded-lg">
           <table class="w-full text-left text-sm border-collapse">
             <thead class="bg-[#1c1d1f] text-white">
@@ -591,11 +680,13 @@
             </thead>
             <tbody>
               {#if isStelingLoading}<tr><td colspan="6" class="p-10 text-center text-slate-500 font-bold"><span class="material-icons animate-spin align-middle mr-2">sync</span> Mengambil data buku steling...</td></tr>
-              {:else if stelingItems.length === 0}<tr><td colspan="6" class="p-10 text-center text-slate-400 font-bold italic">Belum ada mutasi obat pada rentang ini.</td></tr>
+              {:else if stelingItems.length === 0}<tr><td colspan="6" class="p-10 text-center text-slate-400 font-bold italic">Belum ada mutasi obat pada rentang/filter ini.</td></tr>
               {:else}
                 {#each stelingItems as item}
                   <tr class="border-b border-[#d1d7dc] hover:bg-emerald-50 transition-colors">
-                    <td class="p-3 text-xs text-gray-500 text-center">{new Date(item.created_at).toLocaleString('id-ID')}</td>
+                    <td class="p-3 text-xs text-center {item.isNewMonth ? 'bg-blue-100/60 font-black border-l-4 border-blue-500 text-blue-900' : 'text-gray-500'}">
+                       {new Date(item.created_at).toLocaleString('id-ID')}
+                    </td>
                     <td class="p-3 font-bold text-[#1c1d1f]">{item.nama_obat}</td>
                     <td class="p-3 text-center font-bold {item.jenis_mutasi === 'KELUAR' ? 'text-red-600' : 'text-green-600'}">{item.jenis_mutasi}</td>
                     <td class="p-3 text-center font-black text-lg">{item.jumlah}</td>
@@ -607,6 +698,20 @@
             </tbody>
           </table>
         </div>
+
+        <div class="max-w-3xl mx-auto mt-12 bg-white border-2 border-red-100 border-dashed rounded-xl p-6 text-center shadow-sm no-print">
+           <h3 class="font-bold text-slate-800 mb-2 flex items-center justify-center"><span class="material-icons text-red-500 mr-2">inventory_2</span> Manajemen Arsip Tahunan</h3>
+           <p class="text-xs text-slate-500 mb-6">Unduh arsip lengkap untuk audit sebelum melakukan pembersihan/pengosongan database agar server tetap cepat.</p>
+           <div class="flex flex-col sm:flex-row justify-center gap-4">
+          <button on:click={() => { isStelingLoading = true; cetakStelingPDF(true); }} class="bg-slate-800 hover:bg-black text-white px-6 py-3 rounded-lg font-bold text-sm shadow flex items-center justify-center transition-colors">
+            <span class="material-icons text-sm mr-2">picture_as_pdf</span> 1. Unduh Semua Arsip PDF
+          </button>
+             <button on:click={() => showPurgeStelingModal = true} class="bg-white border-2 border-red-200 text-red-600 hover:bg-red-50 px-6 py-3 rounded-lg font-bold text-sm shadow-sm flex items-center justify-center transition-colors">
+               <span class="material-icons text-sm mr-2">delete_sweep</span> 2. Kosongkan Database
+             </button>
+           </div>
+        </div>
+
       </div>
     </div>
 
@@ -728,7 +833,7 @@
       </div>
     </div>
   </div>
-</div> ```
+</div>
 
 {#if showModalEdit}
   <div class="fixed inset-0 modal-overlay flex justify-center items-center z-50 p-4 animate-fade-in no-print">
