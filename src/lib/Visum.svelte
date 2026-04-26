@@ -448,7 +448,7 @@
           <p>Kepala UPT Puskesmas Poncokusumo,</p>
           <br><br><br><br>
           <p class="font-bold">dr. Wiwit Wijayati</p>
-          <p>NIP. 19750124 200604 2 015</p>
+          <p>NIP. 197501242006042015</p>
         </div>
 
         <div class="text-left w-full md:w-64">

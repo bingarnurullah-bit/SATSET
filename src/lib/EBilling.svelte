@@ -20,6 +20,9 @@
   ];
   let identitasValues = {};
   
+  // State untuk Tooltip NIK
+  let isNikFocused = false;
+  
   let keranjang = [];
   let kategoriTerpilih = "";
   let tindakanInput = "";
@@ -54,7 +57,6 @@
   // =====================================
   async function muatMasterData() {
     try {
-      // HANYA MENYEDOT NAMA DAN HARGA (TANPA STOK)
       const resObat = await supabase.from('master_obat').select('nama, harga');
       dataObatDinamis = resObat.data || [];
 
@@ -109,11 +111,39 @@
   }
 
   // =====================================
+  // 🔥 FUNGSI PEMERIKSAAN SEBELUM PREVIEW KUITANSI
+  // =====================================
+  function prosesKuitansi() {
+    if (keranjang.length === 0) return;
+
+    let nikPasien = identitasValues[1] ? identitasValues[1].toString().trim() : "";
+    
+    // BLOKIR KERAS (Hard Block) jika NIK tidak 16 digit. TIDAK ADA PENGHAPUSAN OTOMATIS!
+    if (nikPasien !== "" && nikPasien.length !== 16) {
+      return alert(`⚠️ PROSES DITOLAK!\n\nNIK pasien kurang lengkap (saat ini ${nikPasien.length} dari 16 digit).\n\nSilakan lengkapi menjadi 16 digit, atau HAPUS/KOSONGI saja kolom NIK jika pasien tidak hafal.`);
+    }
+
+    // Tancap gas lanjut ke mode preview cetak
+    isPreview = true;
+    window.scrollTo(0,0);
+  }
+
+  // =====================================
   // FUNGSI DATABASE E-BILLING SUPABASE
   // =====================================
   async function simpanDataKasir() {
     const namaPasien = identitasValues[0];
-    if (!namaPasien) return alert("Mohon isi Nama Lengkap pasien sebelum menyimpan!");
+    let nikPasien = identitasValues[1] ? identitasValues[1].toString().trim() : "";
+
+    // VALIDASI NAMA PASIEN
+    if (!namaPasien || namaPasien.trim() === "") {
+      return alert("⚠️ Mohon isi Nama Lengkap pasien sebelum menyimpan!");
+    }
+
+    // Jika kosong (karena pasien tidak bawa/dihapus manual), ubah jadi strip "-"
+    if (nikPasien === "") {
+      nikPasien = "-";
+    }
 
     isSavingDB = true;
     try {
@@ -121,7 +151,7 @@
         const { error } = await supabase.from('riwayat_kasir').update({
           tanggal: hariIni,
           nama_pasien: namaPasien,
-          rm: identitasValues[1] || "-", 
+          rm: nikPasien, 
           total_biaya: totalHarga,
           identitas: identitasValues,
           keranjang: keranjang
@@ -131,7 +161,7 @@
         const { error } = await supabase.from('riwayat_kasir').insert([{
           tanggal: hariIni,
           nama_pasien: namaPasien,
-          rm: identitasValues[1] || "-", 
+          rm: nikPasien, 
           total_biaya: totalHarga,
           identitas: identitasValues,
           keranjang: keranjang
@@ -223,30 +253,14 @@
       <head>
         <title>Kwitansi_EBilling_${identitasValues[0] || 'Pasien'}</title>
         <style>
-          /* Ukuran Kertas F4 Standar */
           @page { size: 215.9mm 330.2mm; margin: 10mm 15mm; }
           body { font-family: 'Arial', sans-serif; background: white; color: black; margin: 0; padding: 0; }
-          
-          /* Pengaturan Tabel Basic */
           table { border-collapse: collapse; width: 100%; }
           td, th { color: black !important; }
           
-          /* 🔥 SMART PAGINATION RULES 🔥 */
-          /* 1. Kuitansi Utama dan Arsip Kasir harus tetap utuh di dalam bloknya masing-masing */
-          .kuitansi-block { 
-             page-break-inside: avoid; /* Jangan pisahkan blok ini ke halaman berbeda jika muat */
-             margin-bottom: 20px; 
-          }
-          
-          /* 2. Baris tabel tidak boleh terpotong di tengah huruf */
+          .kuitansi-block { page-break-inside: avoid; margin-bottom: 20px; }
           tr { page-break-inside: avoid; }
-          
-          /* 3. Garis potong hanya muncul jika masih dalam satu halaman */
-          .garis-potong {
-             border-bottom: 2px dashed #999;
-             margin-bottom: 20px;
-             padding-bottom: 20px;
-          }
+          .garis-potong { border-bottom: 2px dashed #999; margin-bottom: 20px; padding-bottom: 20px; }
 
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
           magical-app, grammarly-extension, div[id^="magical"] { display: none !important; }
@@ -297,13 +311,54 @@
 
       <div class="flex flex-col lg:flex-row gap-8">
         <div class="flex-1 space-y-6">
+          
           <section class="card-input pt-4">
             <h2 class="text-[#0F172A] font-black mb-6 uppercase text-xs border-b pb-3 italic">Identitas Pasien</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
               {#each labelIdentitas as label, i}
-                <div>
+                <div class="relative">
                   <label class="label-pro" for="p-{i}">{label}</label>
-                  <input type={label.toLowerCase().includes('tanggal') ? 'date' : (label === 'NIK' ? 'number' : 'text')} id="p-{i}" bind:value={identitasValues[i]} class="input-search uppercase">
+
+                  {#if label === 'NIK' && isNikFocused}
+                    <div class="absolute z-10 bottom-[105%] left-0 bg-red-100 text-red-700 text-[11px] px-3 py-2 rounded-lg shadow-md border border-red-300 font-bold w-full text-center animate-fade-in">
+                      Jika pasien tidak tahu NIK nya, maka kosongi NIK pasien
+                      <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-red-300"></div>
+                    </div>
+                  {/if}
+
+                  <div class="relative">
+                    <input 
+                      type={label.toLowerCase().includes('tanggal') ? 'date' : 'text'} 
+                      id="p-{i}" 
+                      bind:value={identitasValues[i]} 
+                      maxlength={label === 'NIK' ? 16 : null}
+                      inputmode={label === 'NIK' ? "numeric" : null}
+                      on:focus={() => { if(label === 'NIK') isNikFocused = true; }}
+                      on:blur={() => { if(label === 'NIK') isNikFocused = false; }}
+                      on:input={(e) => {
+                        // SIHIR ANTI-TEMBUS: Kontrol langsung dari objek DOM
+                        if (label === 'NIK') {
+                          let val = e.target.value.replace(/\D/g, ''); // Hapus selain angka
+                          if (val.length > 16) val = val.substring(0, 16); // Potong mentok 16
+                          
+                          identitasValues[i] = val; // Bind ke state
+                          e.target.value = val; // Paksa UI menyesuaikan diri (Mencegah Svelte delay)
+                        }
+                      }}
+                      placeholder={label === 'NIK' ? "16 Digit Angka (Opsional)" : ""}
+                      class="input-search uppercase {label === 'NIK' ? 'pr-10' : ''}"
+                    >
+                    
+                    {#if label === 'NIK'}
+                      <div class="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center pointer-events-none">
+                        {#if identitasValues[i] && identitasValues[i].length > 0 && identitasValues[i].length < 16}
+                          <span class="material-icons text-red-500 text-xl font-bold drop-shadow-sm">close</span>
+                        {:else if identitasValues[i] && identitasValues[i].length === 16}
+                          <span class="material-icons text-green-500 text-xl font-bold drop-shadow-sm">check_circle</span>
+                        {/if}
+                      </div>
+                    {/if}
+                  </div>
                 </div>
               {/each}
             </div>
@@ -403,7 +458,7 @@
                 <span class="text-xs uppercase text-slate-300 font-bold">Total</span>
                 <span class="text-2xl font-black text-[#D4AF37] leading-none">{formatRupiah(totalHarga)}</span>
               </div>
-              <button on:click={() => { if(keranjang.length > 0) { isPreview = true; window.scrollTo(0,0); } }} class="btn-cetak w-full {keranjang.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}" disabled={keranjang.length === 0}>PROSES & CEK KUITANSI</button>
+              <button on:click={prosesKuitansi} class="btn-cetak w-full {keranjang.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}" disabled={keranjang.length === 0}>PROSES & CEK KUITANSI</button>
             </div>
           </div>
         </div>
