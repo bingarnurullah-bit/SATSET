@@ -9,26 +9,23 @@
   import Riwayat from './lib/Riwayat.svelte';
   import Admin from './lib/Admin.svelte';
   import Visum from './lib/Visum.svelte';
+  import BonObat from './lib/BonObat.svelte';
 
   let user = null;
   let currentView = 'dashboard'; 
   
-  // Variabel penampung data dari Google Sheets (masih dipakai modul lain selain Ebilling)
+  // Variabel penampung data dari Google Sheets
   let masterData = { identitas: [], kategori: {}, obat: [], kop: {} };
   const API_URL = "https://script.google.com/macros/s/AKfycbyac04k5lum4iD443YfCDjZt13IIbh3dANpBsY-1eYSLa8prx79xV9wnkcaRwhyw26GMw/exec";
 
   onMount(() => {
-    // ========================================================
     // KUNCI KEAMANAN: Paksa Firebase masuk mode SESSION
-    // Tiket login akan otomatis hangus saat browser/tab ditutup
-    // ========================================================
     if (window.firebase) {
       window.firebase.auth().setPersistence(window.firebase.auth.Auth.Persistence.SESSION)
         .then(() => {
-          // Setelah mode aman aktif, baru cek status login
           window.firebase.auth().onAuthStateChanged((u) => {
             user = u;
-            if(user) muatMasterData(); // Kalau login berhasil, langsung ambil data
+            if(user) muatMasterData(); 
             
             setTimeout(() => {
               if(window.lucide) window.lucide.createIcons();
@@ -40,26 +37,21 @@
         });
     }
 
-    // 🔥 FITUR 1: SISTEM NAVIGASI (AGAR TOMBOL BACK BERFUNGSI) 🔥
-    // Baca hash URL saat web pertama dibuka (Cegah ke-reset ke dashboard)
+    // FITUR 1: SISTEM NAVIGASI 
     const hash = window.location.hash.replace('#', '');
     if (hash) {
       currentView = hash;
     }
-
-    // Dengarkan saat tombol Back ditekan di HP/Browser
     window.addEventListener('popstate', handlePopState);
   });
 
   function handlePopState(event) {
     const hash = window.location.hash.replace('#', '');
-    // Jika ada URL di atas, pindah ke sana, jika kosong kembali ke dashboard
     currentView = hash ? hash : 'dashboard';
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => { if(window.lucide) window.lucide.createIcons(); }, 50);
   }
 
-  // Fungsi ambil data dari Google Sheets (Database Mas)
   async function muatMasterData() {
     try {
       const response = await fetch(API_URL + "?action=getMasterData");
@@ -72,22 +64,18 @@
     }
   }
 
-  // 🔥 UPDATE FUNGSI SWITCH: Pindah halaman + Catat ke Riwayat Browser 🔥
   function switchView(target) {
     currentView = target;
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => {
         if(window.lucide) window.lucide.createIcons();
     }, 50);
-
-    // Beritahu browser bahwa kita "Pindah Halaman"
     window.history.pushState(null, '', `#${target}`);
   }
 
   function logout() {
     if (window.firebase) {
       window.firebase.auth().signOut().then(() => {
-        // Bersihkan URL atas agar rapi saat login kembali
         window.history.replaceState(null, '', window.location.pathname);
       });
     }
@@ -141,7 +129,7 @@
         Administrasi & Kasir
       </a>
 
-      <a href="#app-jaga-input" on:click|preventDefault={() => switchView('app-jaga-input')} class="pb-1 transition-all {currentView.includes('app-jaga') ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
+      <a href="#app-jaga-menu" on:click|preventDefault={() => switchView('app-jaga-menu')} class="pb-1 transition-all {currentView.includes('app-jaga') || currentView === 'app-bon-obat' ? 'text-udemy-purple font-bold border-b-2 border-udemy-purple' : 'hover:text-udemy-purple hover:font-bold border-b-2 border-transparent'}">
         Operasional Shift
       </a>
 
@@ -162,24 +150,68 @@
   <main class="min-h-screen pb-20">
     {#if currentView === 'dashboard'}
       <Dashboard {switchView} />
+    
     {:else if currentView === 'app-ebilling'}
       <EBilling {switchView} />
+    
+    {:else if currentView === 'app-jaga-menu'}
+      <div class="max-w-4xl mx-auto p-6 pt-16 animate-fade-in">
+         <h1 class="text-3xl font-black text-center text-slate-800 mb-2 uppercase">Operasional Shift</h1>
+         <p class="text-center text-slate-500 mb-12">Pilih aplikasi operasional yang Ingin Anda Jalankan</p>
+         
+         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <button on:click={() => switchView('app-jaga-input')} class="bg-white rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all group flex flex-col text-left border border-slate-100">
+               <div class="w-full h-56 overflow-hidden relative">
+                  <div class="absolute inset-0 bg-blue-900/10 group-hover:bg-transparent transition-colors z-10"></div>
+                  <img src="/ugd.jpeg" alt="Rawat Inap" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">                  
+               </div>
+               
+               <div class="p-8 border-t-4 border-blue-500 w-full flex-1">
+                  <h2 class="text-2xl font-black text-slate-800 mb-3">Laporan Shift UGD</h2>
+                  <p class="text-slate-500 font-medium text-sm">Input data pasien UGD/Kaber, rekap shift WA, dan akses buku steling obat.</p>
+               </div>
+            </button>
+
+            <button on:click={() => switchView('app-bon-obat')} class="bg-white rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all group flex flex-col text-left border border-slate-100">
+               <div class="w-full h-56 overflow-hidden relative">
+                  <div class="absolute inset-0 bg-emerald-900/10 group-hover:bg-transparent transition-colors z-10"></div>
+                  <img src="/ranap.jpeg" alt="Rawat Inap" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+               </div>
+
+               <div class="p-8 border-t-4 border-emerald-500 w-full flex-1">
+                  <h2 class="text-2xl font-black text-slate-800 mb-3">Bon Obat Inap & Kaber</h2>
+                  <p class="text-slate-500 font-medium text-sm">Form khusus bon obat untuk Rawat Inap & Kaber (Terkoneksi ke Steling Utama).</p>
+               </div>
+            </button>
+         </div>
+      </div>
+
     {:else if currentView === 'app-jaga-input'}
       <LaporanJaga {switchView} activeTab="input" />
+      
+    {:else if currentView === 'app-bon-obat'}
+      <BonObat {switchView} />
+
     {:else if currentView === 'app-jaga-rekap'}
       <LaporanJaga {switchView} activeTab="rekap" />
+    
     {:else if currentView === 'app-sbar'}
       <Sbar {switchView} />
+    
     {:else if currentView === 'contact'}
       <div class="p-10 text-center animate-fade-in">
         <h2 class="text-2xl font-bold text-navy">Pusat Bantuan (Sedang Proses Migrasi)</h2>
       </div>
+    
     {:else if currentView === 'app-insiden'}
       <Insiden {switchView} />
+    
     {:else if currentView === 'riwayat'} 
       <Riwayat {switchView} />
+    
     {:else if currentView === 'app-admin'}
       <Admin {switchView} />
+    
     {:else if currentView === 'visum'}
       <Visum {switchView} />
     {/if}

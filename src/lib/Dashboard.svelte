@@ -26,7 +26,7 @@
             </div>
         </div>
 
-        <div on:click={() => switchView('app-jaga-input')} class="course-card flex flex-col bg-white rounded-md overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-pointer hover:-translate-y-1">
+        <div on:click={() => switchView('app-jaga-menu')} class="course-card flex flex-col bg-white rounded-md overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-pointer hover:-translate-y-1">
             <div class="card-image-container relative h-36 lg:h-40 overflow-hidden border-b border-gray-200">
                 <img src="https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover" alt="Laporan Jaga">
             </div>
